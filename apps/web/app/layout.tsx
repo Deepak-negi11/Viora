@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${open_sans.variable} ${roboto.variable} ${inter.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}

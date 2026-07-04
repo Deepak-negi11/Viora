@@ -1,10 +1,6 @@
-import { ModeToggle } from "../../components/dark-mode"
-import { Navbar } from "../../components/navbar"
+"use client"
 
-export default function Server() {
-    return <>
-        <div className="h-screen w-full">
-            <Navbar />
-        </div>
-    </>
-}
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { Button } from "@repo/ui/button";
+
