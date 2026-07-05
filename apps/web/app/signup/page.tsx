@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { TextField } from "../_components/TextField";
+import { TextField } from "../../components/TextField";
 import { signinUser, signupUser } from "../../lib/auth-api";
 import { saveAuthToken } from "../../lib/auth-token";
 
