@@ -1,20 +1,44 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ButtonHTMLAttributes, ReactNode } from "react";
+import { cn } from "./cn"
 
-interface ButtonProps {
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+
+
+type ButtonProps = {
+  //what does this children does i think 
   children: ReactNode;
-  className?: string;
-  appName: string;
+  variant?: ButtonVariant;
+  //what is this && here does meaning of this button html attrbibute what does it does inthei 
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
+//use case of this base what is thie used for i think 
+//in this base when i decrese the size of the px and the py they increase and hte value of the px and the py i increase the size decrese reason behind this adn how does this focus work becasue it is not working for me why is it show
+const base = "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-neutral-400/60 disabled:opacity-50 disabled:pointer-events-none";
+
+//ok so this are the vareint of the button what what type of the button thier will be in the ui
+
+const variants: Record<ButtonVariant, string> = {
+  primary: "bg-indigo-500 text-white hover:bg-indigo-400",
+  secondary: "border border-neutral-700 bg-neutral-900 text-neutral-100 hover:border-neutral-500 hover:bg-neutral-800",
+  ghost: "text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 ",
+  danger: "bg-red-600 text-white hover:bg-red-500",
 }
 
-export const Button = ({ children, className, appName }: ButtonProps) => {
+export function Button({
+  children,
+  variant = "primary",
+  className,
+  //what i this ...rest what does it does like 
+  ...rest
+}: ButtonProps) {
   return (
     <button
-      className={className}
-      onClick={() => alert(`Hello from your ${appName} app!`)}
+      className={cn(base, variants[variant], className)}
+      {...rest}
     >
       {children}
     </button>
   );
-};
+}

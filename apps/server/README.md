@@ -13,7 +13,7 @@ Bun server for the 2D Metaverse API and realtime WebSocket layer.
 ## Run
 
 ```bash
-bun run index.ts
+bun run dev
 ```
 
 ## Environment
