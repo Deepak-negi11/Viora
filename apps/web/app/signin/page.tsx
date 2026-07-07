@@ -14,9 +14,11 @@ export default function SigninPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  //what is this for event and this <htmlformelement> and what is this event is this which we are getting as a props 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    //what is this setIsSubmitting
     setIsSubmitting(true);
 
     try {
@@ -25,6 +27,7 @@ export default function SigninPage() {
       router.push("/spaces");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
+      //what is this finally and this like when does this run 
     } finally {
       setIsSubmitting(false);
     }
@@ -40,6 +43,7 @@ export default function SigninPage() {
           Sign in
         </h2>
 
+        //what is this form tag used in 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <TextField
             id="email"

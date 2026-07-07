@@ -6,10 +6,12 @@ import { useSpaceSocket } from "../../../hooks/use-space-socket";
 import { ArenaBoard } from "../../../components/arena-board";
 
 export default function SpacePage() {
+  //what is this useParam what dooes this do explain this 
   const params = useParams<{ spaceId: string }>();
   const { status, error, selfId, self, others, move } = useSpaceSocket(params.spaceId);
 
   useEffect(() => {
+    //what is this function used for 
     function onKeyDown(event: KeyboardEvent) {
       let dx = 0;
       let dy = 0;
@@ -20,6 +22,7 @@ export default function SpacePage() {
       else return;
 
       event.preventDefault();
+      //what does it even do in this 
       const nextX = Math.max(0, self.x + dx);
       const nextY = Math.max(0, self.y + dy);
       if (nextX === self.x && nextY === self.y) return;

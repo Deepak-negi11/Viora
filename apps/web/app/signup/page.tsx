@@ -17,6 +17,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    //what is this .preventDefault what does this even do
     event.preventDefault();
     setError("");
 

@@ -22,9 +22,13 @@ export function PhaserGame(){
         gameRef.current = new Phaser.Game({
             type:Phaser.AUTO,
             parent:containerRef.current,
-            width:800,
-            height:600,
             backgroundColor:"#0e0e16",
+            pixelArt:true,
+            scale:{
+                mode:Phaser.Scale.RESIZE
+            },
+            width:"100%",
+            height:"100%",
             scene:[ArenaScene]
         });
 
@@ -34,7 +38,7 @@ export function PhaserGame(){
         };
 
     },[]);
-    return <div ref ={containerRef} />
+    return <div ref ={containerRef} className="h-full w-full"/>
 
 
 
