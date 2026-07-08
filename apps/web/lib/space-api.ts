@@ -52,3 +52,20 @@ export function deleteSpace(token: string, spaceId: string) {
 export function getSpace(token: string, spaceId: string) {
   return apiRequest<SpaceDetails>(`/api/v1/space/${spaceId}`, { token });
 }
+
+// one user's public metadata (used to show real names on avatars)
+export type UserMeta = {
+  userId: string;
+  imageUrl: string | null;
+  username: string;
+};
+
+// look up several users at once by their ids, e.g. getUsersMetadata(token, ["u1","u2"]).
+// The server expects ids as a bracketed list: /user/metadata/bulk?ids=[u1,u2]
+export function getUsersMetadata(token: string, ids: string[]) {
+  const idsParam = encodeURIComponent(`[${ids.join(",")}]`);
+  return apiRequest<{ avatars: UserMeta[] }>(
+    `/api/v1/user/metadata/bulk?ids=${idsParam}`,
+    { token },
+  );
+}

@@ -3,11 +3,21 @@
 import { useEffect , useRef } from "react";
 import Phaser from "phaser";
 import { ArenaScene } from "./scenes/arena-scene";
+import type { RefObject } from "react";
+import type { Others,Position } from "../../hooks/use-space-socket";
 
-export function PhaserGame(){
+type PhaserGameProps ={
+    othersRef?:RefObject<Others>;
+    moveRef?:RefObject<(next:Position) =>void>;
+    // userId -> username, so the scene can show real names on pills
+    namesRef?:RefObject<Record<string,string>>;
+}
+
+export function PhaserGame({othersRef,moveRef,namesRef}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
+
 
     //why this i understand to delte the game i think that is not it is for like for what it is for and the use case like why only the ref like hte user geos from the browser so remvoe this and thne agina it come sthen
     const gameRef = useRef<Phaser.Game | null>(null);
@@ -27,8 +37,15 @@ export function PhaserGame(){
             scale:{
                 mode:Phaser.Scale.RESIZE
             },
-            width:"100%",
-            height:"100%",
+            //what is this callback and what does this prebot with the game registry means
+            callbacks:{
+                preBoot:(game) =>{
+                    game.registry.set("othersRef" , othersRef);
+                    game.registry.set("moveRef" , moveRef);
+                    game.registry.set("namesRef" , namesRef);
+                },
+            },
+            
             scene:[ArenaScene]
         });
 
@@ -37,7 +54,7 @@ export function PhaserGame(){
             gameRef.current = null
         };
 
-    },[]);
+    },[othersRef, moveRef, namesRef]);
     return <div ref ={containerRef} className="h-full w-full"/>
 
 
