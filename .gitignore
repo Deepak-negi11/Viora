@@ -36,3 +36,9 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Local AI agent config, skills, and working notes (do not commit)
+.kiro/
+.claude/
+.skills/
+PROGRESS.md
