@@ -7,6 +7,7 @@ export type SocketData = {
   y: number;
 };
 
+//what is this Socket mean and what does this Server web socket mean in thsi what does it changes
 export type Socket = ServerWebSocket<SocketData>;
 
 type Member = {
@@ -16,9 +17,11 @@ type Member = {
   y: number;
 };
 
+//what does this new map mena din this what doe sthis even does here 
 const rooms = new Map<string, Map<string, Member>>();
 
 export function addToRoom(spaceId: string, member: Member) {
+  //explain this line what it will do becasue i dont thing it will do naything like the rooms is a map and if we do a get space id what it wil get
   let room = rooms.get(spaceId);
 
   if (!room) {
@@ -54,6 +57,7 @@ export function othersInRoom(spaceId: string, exceptUserId: string): Member[] {
 export function broadcast(spaceId: string, exceptUserId: string, message: unknown) {
   const data = JSON.stringify(message);
 
+  //explain this for loop to me in this 
   for (const member of othersInRoom(spaceId, exceptUserId)) {
     member.socket.send(data);
   }

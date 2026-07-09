@@ -1,11 +1,11 @@
 import Phaser from "phaser";
 
-const TILE = 32; //what does this mean in the simpler way to understand  i do understasn the tile  like where we use this for movement all where what does pixel per tile means
+const TILE = 32; // pixels per tile: every grid cell is 32x32 screen pixels
 
 const COLS = 40;
 const ROWS = 30;
 export class ArenaScene extends Phaser.Scene{
-    //this the my place in the grid 2,2
+    // spawn on the stone path just outside the office entrance
     private tileX = 19;
     private tileY = 27;
 
@@ -15,12 +15,13 @@ export class ArenaScene extends Phaser.Scene{
     private facing : "down" |"up" | "right" | "left" = "down";
     private isMoving = false;
 
-    //i have no idea what is this 3 thing what is this Record 
     private otherSprites:Record<string,Phaser.GameObjects.Sprite> = {}
     private otherRef?:{current:Record<string,{x:number;y:number}>}
     private moveRef?: {current:(p:{x:number;y:number})=>void}
     // userId -> username, filled by the React page; used to label other players' pills
     private namesRef?: {current:Record<string,string>}
+    // userIds currently near me (for fading far-away avatars)
+    private nearbyRef?: {current:Set<string>}
     // the name currently SHOWN on each other player's pill, so we can rebuild it when the real name loads
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
@@ -33,112 +34,176 @@ export class ArenaScene extends Phaser.Scene{
     // mapping of "x,y" to sitting direction
     private chairMap: Record<string, "up" | "down" | "left" | "right"> = {};
     // the name label above me, and one label above each other player
-    // (now a Container: rounded pill + green online dot + text)
     private nameTag!: Phaser.GameObjects.Container;
     private otherTags: Record<string, Phaser.GameObjects.Container> = {};
     // a soft shadow ellipse under me and under each other player, so avatars feel grounded
     private playerShadow!: Phaser.GameObjects.Ellipse;
     private otherShadows: Record<string, Phaser.GameObjects.Ellipse> = {};
-    // tiles you cannot walk onto (walls). key format "x,y".
+    // tiles you cannot walk onto (walls, furniture, trees). key format "x,y".
     private blocked = new Set<string>();
 
     private player!: Phaser.GameObjects.Sprite
-    //why this class why this then what does super means i forgot
-    //does this instructor call the it paresnt i thinks so
+
     constructor(){
         super("arena")
     }
-    
-    //load the images before the game start
+
     preload(){
-        this.load.image("floor" ,"/assets/floor-grey.png")
-        this.load.image("floor-teal", "/assets/floor-teal.png")
-        this.load.image("floor-herringbone", "/assets/floor-herringbone.png")
-        this.load.image("floor-brick", "/assets/floor-brick.png")
+        // floors, walls, grass and the path are generated at runtime in makeTextures()
         this.load.spritesheet("adam","/assets/adam-run.png",{
             frameWidth:16,
             frameHeight:32
         });
 
-        // load 24 furniture pieces (cut from the LimeZu Interiors tileset)
-        for (let i = 0; i < 24; i++) {
+        // furniture pieces (cut from the LimeZu Interiors tileset)
+        for (const i of [6, 7, 8, 9, 12, 17, 19, 20, 22, 23]) {
             this.load.image("furn" + i, "/assets/furniture/piece_" + i + ".png");
         }
+        // smaller single items cut out of the composite pieces
+        for (const n of [
+            "table-big", "table-small", "seat-tl", "seat-bl",
+            "chair-wood", "chair-wood2", "pot-1", "pot-2", "mirror",
+            "lamp-warm", "lamp-blue", "shelf-single",
+        ]) {
+            this.load.image(n, "/assets/furniture/sub/" + n + ".png");
+        }
+        // outdoor sprites (cut from the Serene Village tileset)
+        for (const n of [
+            "tree-green", "tree-lime", "tree-teal", "tree-teal2",
+            "bush-small", "bush-ball", "flower-red", "flower-blue",
+            "flower-yellow", "rock-small", "rock-med",
+        ]) {
+            this.load.image(n, "/assets/outdoor/" + n + ".png");
+        }
     }
-    // this create the grid or what game
-    create(){
-        // what is this .scale here
-        //what is this do here like and first of call why is this a class 
-        const width = this.scale.width;
-        const height = this.scale.height;
 
+    create(){
         const worldWidth = COLS * TILE;
         const worldHeight = ROWS * TILE;
 
-        // Draw main corridor floor (neutral grey carpet) across the entire 40x30 map
-        this.add.tileSprite(0, 0, worldWidth, worldHeight, "floor").setOrigin(0, 0).setDepth(-1002);
+        this.makeTextures();
 
-        // --- Build Symmetrical Thin boundaries around the outer edge of the map ---
-        const boundaryColor = 0x2c3e50;
-        const wallThickness = 6;
-        
-        // Top boundary (y = 0)
-        for (let x = 0; x < COLS; x++) {
-            this.add.rectangle(x * TILE, 0, TILE, wallThickness, boundaryColor).setOrigin(0, 0).setDepth(wallThickness);
-            this.blocked.add(x + ",0");
-        }
-        // Bottom boundary (y = 29) with exit/entrance gap at x = 19, 20
-        for (let x = 0; x < COLS; x++) {
-            if (x === 19 || x === 20) continue;
-            this.add.rectangle(x * TILE, 29 * TILE + TILE - wallThickness, TILE, wallThickness, boundaryColor).setOrigin(0, 0).setDepth(29 * TILE + TILE);
-            this.blocked.add(x + ",29");
-        }
-        // Left boundary (x = 0)
-        for (let y = 0; y < ROWS; y++) {
-            this.add.rectangle(0, y * TILE, wallThickness, TILE, boundaryColor).setOrigin(0, 0).setDepth(y * TILE + TILE);
-            this.blocked.add("0," + y);
-        }
-        // Right boundary (x = 39)
-        for (let y = 0; y < ROWS; y++) {
-            this.add.rectangle(39 * TILE + TILE - wallThickness, y * TILE, wallThickness, TILE, boundaryColor).setOrigin(0, 0).setDepth(y * TILE + TILE);
-            this.blocked.add("39," + y);
-        }
+        // ============================================================
+        // 1. OUTDOORS — grass everywhere + a stone path to the door
+        // ============================================================
+        this.add.tileSprite(0, 0, worldWidth, worldHeight, "grass").setOrigin(0, 0).setDepth(-1010);
+        this.add.tileSprite(18 * TILE, 26 * TILE, 4 * TILE, 4 * TILE, "path").setOrigin(0, 0).setDepth(-1005);
 
-        // --- Build 4 Spacious Office Rooms with herringbone wood floors and thin slate-steel walls ---
-        const officeWallColor = 0x3f4f66; // Slate steel
-        // Left Office 1 (Top Left)
-        this.buildRoom(1, 2, 8, 10, "floor-herringbone", { side: "right", at: 5, span: 3 }, officeWallColor);
-        // Left Office 2 (Bottom Left)
-        this.buildRoom(1, 16, 8, 10, "floor-herringbone", { side: "right", at: 19, span: 3 }, officeWallColor);
+        // ============================================================
+        // 2. THE BUILDING — one connected office, x3..36 / y2..26
+        // ============================================================
+        // wood floor under the whole building
+        this.add.tileSprite(3 * TILE, 2 * TILE, 34 * TILE, 25 * TILE, "floor-wood").setOrigin(0, 0).setDepth(-1000);
 
-        // Right Office 1 (Top Right)
-        this.buildRoom(31, 2, 8, 10, "floor-herringbone", { side: "left", at: 5, span: 3 }, officeWallColor);
-        // Right Office 2 (Bottom Right)
-        this.buildRoom(31, 16, 8, 10, "floor-herringbone", { side: "left", at: 19, span: 3 }, officeWallColor);
+        const zone = (x: number, y: number, w: number, h: number, key: string) =>
+            this.add.tileSprite(x * TILE, y * TILE, w * TILE, h * TILE, key).setOrigin(0, 0).setDepth(-998);
 
-        // --- Build Central Kitchen / Break Room (Top Center, Brick floor, Thin walls) ---
-        this.buildRoom(11, 2, 18, 9, "floor-brick", { side: "bottom", at: 18, span: 3 }, officeWallColor);
+        // carpet in the 4 offices along the top
+        for (const ox of [4, 11, 23, 30]) zone(ox, 3, 6, 6, "floor-office");
+        zone(4, 14, 9, 6, "floor-conf");    // conference room
+        zone(27, 14, 9, 6, "floor-lounge"); // lounge
+        zone(4, 21, 10, 5, "floor-cafe");   // café (open corner)
 
-        // --- Build Central Conference Room (Herringbone wood floor, slate-steel walls) ---
-        this.buildRoom(11, 13, 8, 8, "floor-herringbone", { side: "bottom", at: 13, span: 3 }, officeWallColor);
+        // --- walls ---
+        this.wallRow(3, 36, 2);                          // building top
+        this.wallRow(3, 36, 26, [18, 19, 20, 21]);       // building bottom, entrance gap
+        this.wallCol(3, 2, 26);                          // building left
+        this.wallCol(36, 2, 26);                         // building right
+        // office dividers + office fronts (each with a 2-tile doorway)
+        for (const x of [10, 17, 22, 29]) this.wallCol(x, 3, 9);
+        this.wallRow(4, 9, 9, [6, 7]);
+        this.wallRow(11, 16, 9, [13, 14]);
+        this.wallRow(23, 28, 9, [25, 26]);
+        this.wallRow(30, 35, 9, [32, 33]);
+        // conference room (door on its right wall)
+        this.wallRow(4, 13, 13);
+        this.wallRow(4, 13, 20);
+        this.wallCol(13, 13, 20, [16, 17]);
+        // lounge (door on its left wall)
+        this.wallRow(26, 35, 13);
+        this.wallRow(26, 35, 20);
+        this.wallCol(26, 13, 20, [16, 17]);
 
-        // --- Build Central Lounge Room (Herringbone wood floor, slate-steel walls) ---
-        this.buildRoom(21, 13, 8, 8, "floor-herringbone", { side: "bottom", at: 23, span: 3 }, officeWallColor);
+        // --- soft area rugs (painted, sit above floors, below furniture) ---
+        const rug = (x: number, y: number, w: number, h: number, color: number, alpha: number) => {
+            const g = this.add.graphics();
+            g.fillStyle(color, alpha);
+            g.fillRoundedRect(x * TILE, y * TILE, w * TILE, h * TILE, 10);
+            g.setDepth(-996);
+        };
+        rug(14, 14, 12, 6, 0x51608a, 0.14); // coworking area
+        rug(28, 17, 6, 3, 0xb08968, 0.28);  // lounge
+        rug(18, 22, 4, 4, 0x8a5a44, 0.25);  // entrance runner
 
-        // Lounge area rug (blue/grey translucent rounded rect)
-        const rug = this.add.graphics();
-        rug.fillStyle(0x3a3a52, 0.35);
-        rug.fillRoundedRect(22 * TILE, 14 * TILE, 6 * TILE, 5 * TILE, 12);
-        rug.setDepth(-999);
+        // --- zone labels (Gather-style, painted on the floor) ---
+        const label = (x: number, y: number, text: string) => {
+            this.add.text(x * TILE, y * TILE, text, {
+                fontFamily: "sans-serif",
+                fontSize: "10px",
+                fontStyle: "bold",
+                color: "#3f4654",
+            }).setAlpha(0.7).setDepth(-990).setResolution(3);
+        };
+        label(4.3, 3.25, "OFFICE 1");
+        label(11.3, 3.25, "OFFICE 2");
+        label(23.3, 3.25, "OFFICE 3");
+        label(30.3, 3.25, "OFFICE 4");
+        label(4.3, 14.2, "CONFERENCE");
+        label(17.6, 13.25, "COWORKING");
+        label(27.3, 14.2, "LOUNGE");
+        label(4.3, 21.2, "CAFE");
+        label(19.2, 21.2, "LOBBY");
 
-        // --- Place All Furniture & Register Sitting Chairs ---
-        const placeFurniture = (id: number, fx: number, fy: number, opts?: {
+        // ============================================================
+        // 3. OUTDOOR DECOR — trees ring the map, flowers soften it
+        // ============================================================
+        const treeKeys = ["tree-green", "tree-lime", "tree-teal", "tree-teal2"];
+        const tree = (tx: number, ty: number, k: number) => {
+            this.add.image(tx * TILE, (ty + 1) * TILE, treeKeys[k % 4]!)
+                .setOrigin(0, 1)
+                .setDepth((ty + 1) * TILE);
+            this.blocked.add(tx + "," + ty);
+            this.blocked.add((tx + 1) + "," + ty);
+        };
+        // top edge
+        [0, 3, 6, 9, 12, 15, 19, 23, 26, 29, 32, 35, 38].forEach((x, i) => tree(x, 1, i));
+        // left + right edges
+        [4, 8, 12, 16, 20, 24].forEach((y, i) => { tree(0, y, i + 1); tree(38, y, i); });
+        // bottom edge (keep the path clear)
+        [1, 5, 9, 13, 23, 27, 31, 35].forEach((x, i) => tree(x, 29, i + 2));
+
+        // small decor: bushes + rocks block, flowers are walk-over
+        const decor = (key: string, tx: number, ty: number, block: boolean) => {
+            this.add.image((tx + 0.5) * TILE, (ty + 1) * TILE, key)
+                .setOrigin(0.5, 1)
+                .setDepth(block ? (ty + 1) * TILE : ty * TILE);
+            if (block) this.blocked.add(tx + "," + ty);
+        };
+        decor("bush-small", 2, 27, true);
+        decor("bush-small", 37, 27, true);
+        decor("bush-ball", 2, 4, true);
+        decor("bush-ball", 37, 12, true);
+        decor("rock-small", 1, 27, true);
+        decor("rock-med", 38, 27, true);
+        decor("flower-red", 17, 27, false);
+        decor("flower-blue", 22, 27, false);
+        decor("flower-yellow", 5, 27, false);
+        decor("flower-red", 33, 28, false);
+        decor("flower-blue", 2, 13, false);
+        decor("flower-yellow", 37, 20, false);
+        decor("flower-blue", 12, 27, false);
+        decor("flower-red", 27, 28, false);
+
+        // ============================================================
+        // 4. FURNITURE
+        // ============================================================
+        const placeItem = (key: string, fx: number, fy: number, opts?: {
             blockedOffsets?: [number, number][],
             chairOffsets?: { dx: number; dy: number; dir: "up" | "down" | "left" | "right" }[]
         }) => {
-            const piece = this.add.image(fx * TILE, fy * TILE, "furn" + id).setOrigin(0, 0);
+            const piece = this.add.image(fx * TILE, fy * TILE, key).setOrigin(0, 0);
             piece.setDepth(piece.y + piece.displayHeight);
-            
+
             if (opts?.blockedOffsets) {
                 opts.blockedOffsets.forEach(([dx, dy]) => {
                     this.blocked.add((fx + dx) + "," + (fy + dy));
@@ -154,96 +219,141 @@ export class ArenaScene extends Phaser.Scene{
             }
         };
 
-        // Clean Desk setup (piece_6: size 3x4): blocks top row (desk) and bottom rows (whiteboard/border). Chair is at (1, 1).
-        const cleanDeskOpts = {
+        // a sittable chair: draws the sprite and registers the tile in chairMap.
+        // the tile stays walkable — walking onto it means "sit down".
+        const chair = (key: string, tx: number, ty: number, dir: "up" | "down" | "left" | "right") => {
+            this.add.image((tx + 0.5) * TILE, (ty + 1) * TILE + 6, key)
+                .setOrigin(0.5, 1)
+                .setDepth(ty * TILE - 2);
+            this.chairMap[tx + "," + ty] = dir;
+        };
+
+        // one plant pot, blocking its tile
+        const pot = (key: string, tx: number, ty: number) =>
+            placeItem(key, tx, ty, { blockedOffsets: [[0, 0]] });
+
+        // Workstation (piece_6, 3x4 tiles): desk row on top, whiteboard/cabinet rows
+        // below, and the chair pocket at (+1,+1) left walkable for sitting.
+        const deskOpts = {
             blockedOffsets: [
-                [0, 0] as [number, number], [1, 0] as [number, number], [2, 0] as [number, number],
-                [0, 2] as [number, number], [1, 2] as [number, number], [2, 2] as [number, number],
-                [0, 3] as [number, number], [1, 3] as [number, number], [2, 3] as [number, number]
-            ],
+                [0, 0], [1, 0], [2, 0],
+                [0, 2], [1, 2], [2, 2],
+                [0, 3], [1, 3], [2, 3],
+            ] as [number, number][],
             chairOffsets: [{ dx: 1, dy: 1, dir: "up" as const }]
         };
 
-        // --- FURNITURE PLACEMENTS ---
-        // Left Office 1 (Shared Executive Room)
-        placeFurniture(6, 2, 3, cleanDeskOpts); // Workstation 1
-        placeFurniture(6, 5, 3, cleanDeskOpts); // Workstation 2
+        // --- 4 offices along the top: workstation + bookshelf + plant ---
+        for (const ox of [4, 11, 23, 30]) {
+            placeItem("furn6", ox, 3, deskOpts);
+            placeItem("shelf-single", ox + 4, 3);
+            pot("pot-1", ox + 5, 8);
+        }
+        // window over each office + wall art in the reception nook
+        for (const ox of [4, 11, 23, 30]) {
+            this.add.image((ox + 3) * TILE, 2 * TILE + 12, "furn22").setDepth(2 * TILE + 40);
+        }
+        this.add.image(20 * TILE, 2 * TILE + 16, "furn17").setDepth(2 * TILE + 40);
 
-        // Left Office 2 (Development Workspace)
-        placeFurniture(6, 2, 17, cleanDeskOpts); // Workstation 1
-        placeFurniture(6, 5, 17, cleanDeskOpts); // Workstation 2
-        placeFurniture(22, 2, 22); // File Drawer Cabinet (Cabinet 1)
+        // --- reception nook between the offices ---
+        pot("pot-2", 18, 3);
+        pot("pot-1", 21, 3);
+        chair("seat-bl", 19, 4, "down");
+        chair("seat-bl", 20, 4, "down");
+        placeItem("lamp-warm", 18, 7, { blockedOffsets: [[0, 0]] });
+        placeItem("lamp-blue", 21, 7, { blockedOffsets: [[0, 0]] });
 
-        // Right Office 1 (Marketing Room)
-        placeFurniture(6, 32, 3, cleanDeskOpts); // Workstation 1
-        placeFurniture(6, 35, 3, cleanDeskOpts); // Workstation 2
-        placeFurniture(12, 34, 8); // Whiteboard screen
+        // --- corridor decor ---
+        placeItem("furn19", 4, 10, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
+        pot("pot-2", 35, 10);
 
-        // Right Office 2 (Finance/HR Workspace)
-        placeFurniture(6, 32, 17, cleanDeskOpts); // Workstation 1
-        placeFurniture(6, 35, 17, cleanDeskOpts); // Workstation 2
-        placeFurniture(8, 33, 22); // Bookshelf (Cabinet 2)
+        // --- conference room ---
+        placeItem("table-big", 7, 15);
+        chair("chair-wood", 7, 14, "down");
+        chair("chair-wood", 8, 14, "down");
+        chair("chair-wood", 7, 17, "up");
+        chair("chair-wood", 8, 17, "up");
+        chair("chair-wood", 6, 15, "right");
+        chair("chair-wood", 6, 16, "right");
+        chair("chair-wood", 9, 15, "left");
+        chair("chair-wood", 9, 16, "left");
+        // whiteboard mounted on the top wall
+        this.add.image(5.5 * TILE, 13 * TILE + 24, "furn12").setDepth(13 * TILE + 40);
+        pot("pot-1", 4, 14);
+        pot("pot-2", 4, 19);
+        placeItem("lamp-warm", 12, 14, { blockedOffsets: [[0, 0]] });
 
-        // Kitchen / Break Room (Top Center)
-        placeFurniture(9, 12, 3); // Counter
-        placeFurniture(20, 26, 3); // Vending machine
-        // Dining Table with 4 chairs (piece_1)
-        placeFurniture(1, 18, 4, {
-            blockedOffsets: [[1, 1], [2, 1], [1, 2], [2, 2]],
-            chairOffsets: [
-                { dx: 0, dy: 1, dir: "right" }, { dx: 0, dy: 2, dir: "right" },
-                { dx: 3, dy: 1, dir: "left" }, { dx: 3, dy: 2, dir: "left" },
-                { dx: 1, dy: 0, dir: "down" }, { dx: 2, dy: 0, dir: "down" },
-                { dx: 1, dy: 3, dir: "up" }, { dx: 2, dy: 3, dir: "up" }
-            ]
-        });
+        // --- coworking area (open, center) ---
+        placeItem("furn6", 15, 14, deskOpts);
+        placeItem("furn6", 19, 14, deskOpts);
+        // collab table on the right
+        placeItem("table-big", 23, 15);
+        chair("chair-wood2", 23, 14, "down");
+        chair("chair-wood2", 24, 14, "down");
+        chair("chair-wood2", 23, 17, "up");
+        chair("chair-wood2", 24, 17, "up");
+        chair("chair-wood2", 22, 15, "right");
+        chair("chair-wood2", 22, 16, "right");
+        // planter dividers (leave the entrance axis open)
+        placeItem("furn19", 15, 19, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
+        placeItem("furn19", 22, 19, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
 
-        // Conference Room (Center Left)
-        placeFurniture(12, 12, 14); // Whiteboard Screen
-        // Meeting Table & Chairs (piece_1)
-        placeFurniture(1, 13, 15, {
-            blockedOffsets: [[1, 1], [2, 1], [1, 2], [2, 2]],
-            chairOffsets: [
-                { dx: 0, dy: 1, dir: "right" }, { dx: 0, dy: 2, dir: "right" },
-                { dx: 3, dy: 1, dir: "left" }, { dx: 3, dy: 2, dir: "left" },
-                { dx: 1, dy: 0, dir: "down" }, { dx: 2, dy: 0, dir: "down" },
-                { dx: 1, dy: 3, dir: "up" }, { dx: 2, dy: 3, dir: "up" }
-            ]
-        });
+        // --- lounge ---
+        placeItem("furn8", 29, 14, { blockedOffsets: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [3, 1]] });
+        // sectional: three armchairs in a row around a coffee table
+        chair("seat-bl", 29, 17, "down");
+        chair("seat-bl", 30, 17, "down");
+        chair("seat-bl", 31, 17, "down");
+        placeItem("table-small", 30, 18);
+        chair("seat-bl", 34, 17, "down");
+        pot("pot-1", 27, 19);
+        placeItem("lamp-warm", 27, 14, { blockedOffsets: [[0, 0]] });
+        placeItem("lamp-blue", 35, 19, { blockedOffsets: [[0, 0]] });
+        pot("pot-2", 35, 14);
 
-        // Lounge Room (Center Right)
-        placeFurniture(19, 24, 14); // Coffee Table
-        // Cozy Sofa Couch (piece_7)
-        placeFurniture(7, 22, 15, {
-            blockedOffsets: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [4, 1]],
-            chairOffsets: [
-                { dx: 1, dy: 1, dir: "up" }, { dx: 2, dy: 1, dir: "up" }, { dx: 3, dy: 1, dir: "up" }
-            ]
-        });
+        // --- café (open, bottom-left) ---
+        placeItem("furn9", 5, 21);                                              // kitchen counter
+        placeItem("furn20", 10, 21, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // fridge
+        placeItem("furn23", 12, 21, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // vending machine
+        placeItem("table-big", 7, 23);
+        chair("chair-wood", 7, 25, "up");
+        chair("chair-wood", 8, 25, "up");
+        chair("chair-wood", 6, 23, "right");
+        chair("chair-wood", 6, 24, "right");
+        chair("chair-wood", 9, 23, "left");
+        chair("chair-wood", 9, 24, "left");
+        pot("pot-2", 4, 25);
 
-        // Lobby (Bottom Center)
-        // Lounge Sofa Couch (piece_7)
-        placeFurniture(7, 18, 24, {
-            blockedOffsets: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [4, 1]],
-            chairOffsets: [
-                { dx: 1, dy: 1, dir: "up" }, { dx: 2, dy: 1, dir: "up" }, { dx: 3, dy: 1, dir: "up" }
-            ]
-        });
+        // --- lobby (bottom-center, by the entrance) ---
+        chair("seat-bl", 15, 22, "down");
+        chair("seat-bl", 16, 22, "down");
+        chair("seat-bl", 17, 22, "down");
+        chair("seat-bl", 23, 22, "down");
+        chair("seat-bl", 24, 22, "down");
+        pot("pot-1", 25, 22);
+        placeItem("furn19", 15, 25, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
+        placeItem("furn19", 22, 25, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
 
+        // --- quiet corner (bottom-right) ---
+        placeItem("furn8", 26, 21);
+        placeItem("table-big", 31, 22);
+        chair("chair-wood2", 31, 21, "down");
+        chair("chair-wood2", 32, 21, "down");
+        chair("chair-wood2", 31, 24, "up");
+        chair("chair-wood2", 32, 24, "up");
+        chair("chair-wood2", 30, 22, "right");
+        chair("chair-wood2", 30, 23, "right");
+        chair("chair-wood2", 33, 22, "left");
+        chair("chair-wood2", 33, 23, "left");
+        placeItem("lamp-blue", 35, 21, { blockedOffsets: [[0, 0]] });
+        pot("pot-1", 35, 25);
 
-        // Draw the grid lines (unused but kept for layout alignment if needed)
-        const grid = this.add.graphics();
-        grid.lineStyle(1, 0x262626, 1);
-
-        this.add.text(16, 16, "Hello Phaser", {
-            fontFamily: "sans-serif",
-            fontSize: "20px",
-            color: "#ffffff",
-        }).setScrollFactor(0).setDepth(9998);
-
+        // ============================================================
+        // 5. PLAYER, INPUT, CAMERA
+        // ============================================================
         this.maxTileX = COLS - 1;
         this.maxTileY = ROWS - 1;
-        
+
         const px = this.tileX * TILE + TILE / 2;
         const py = this.tileY * TILE + TILE / 2;
 
@@ -255,7 +365,6 @@ export class ArenaScene extends Phaser.Scene{
         this.nameTag = this.makeNameTag("You", true, false);
         this.nameTag.setPosition(px, py - 34);
 
-        //what is this this.anims does it means animate 
         this.anims.create({key:"walk-down" , frames:this.anims.generateFrameNumbers("adam" ,{
             start:18,
             end:23
@@ -264,8 +373,8 @@ export class ArenaScene extends Phaser.Scene{
         repeat:-1
         })
 
-        this.anims.create({ key: "walk-up",    
-            frames: this.anims.generateFrameNumbers("adam", 
+        this.anims.create({ key: "walk-up",
+            frames: this.anims.generateFrameNumbers("adam",
                 { start: 6,  end: 11
         }), frameRate: 10, repeat: -1 });
 
@@ -287,11 +396,9 @@ export class ArenaScene extends Phaser.Scene{
         1));
 
 
-        // why is this name is the pointerdown 
         // click / tap a tile to walk there. We only remember WHERE you want to go (the target);
         // stepTowardTarget() then walks one tile at a time, because the server only accepts one-tile moves.
         this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
-            //why does this math.floor is used here i think it gives a random number i have this question why is this worldx and can i keep this as any other name 
             const tx = Math.floor(pointer.worldX/TILE);
             const ty = Math.floor(pointer.worldY /TILE)
             this.targetX = Phaser.Math.Clamp(tx, 0, this.maxTileX);
@@ -301,10 +408,10 @@ export class ArenaScene extends Phaser.Scene{
         this.otherRef = this.registry.get("othersRef");
         this.moveRef = this.registry.get("moveRef");
         this.namesRef = this.registry.get("namesRef");
+        this.nearbyRef = this.registry.get("nearbyRef");
 
 
         this.cameras.main.setBounds(0,0,worldWidth,worldHeight);
-        //what is this 0.1 , 0. it is for the smooth animation for the camera
         this.cameras.main.startFollow(this.player , true ,0.1 , 0.1);
 
         this.cameras.main.setZoom(2);
@@ -418,7 +525,7 @@ export class ArenaScene extends Phaser.Scene{
 
             // sort this player by their feet (same idea as mine), and glue their shadow + pill
             if (!sprite) continue; // safety: sprite exists by now (created above if it was missing)
-            
+
             const otherTileKey = p.x + "," + p.y;
             const otherChairDir = this.chairMap[otherTileKey];
             const isOtherMoving = this.tweens.isTweening(sprite);
@@ -456,7 +563,13 @@ export class ArenaScene extends Phaser.Scene{
                 shadow.setPosition(sprite.x, sprite.y + sprite.displayHeight / 2 - 6);
                 shadow.setDepth(sprite.depth - 2);
             }
-            
+
+            // fade avatars that are far away; keep nearby ones bright (Gather-style).
+            // default to visible when we have no proximity data (e.g. the /phaser sandbox).
+            const near = this.nearbyRef?.current?.has(id) ?? true;
+            sprite.setAlpha(near ? 1 : 0.35);
+            shadow?.setAlpha(near ? 0.25 : 0.1);
+
             // if the real username has loaded (or changed) since we built the pill, rebuild it
             const realName = this.namesRef?.current?.[id];
             const baseName = realName || id.slice(0, 5);
@@ -470,6 +583,7 @@ export class ArenaScene extends Phaser.Scene{
             const tag = this.otherTags[id];
             if (tag) {
                 tag.setPosition(sprite.x, sprite.y - 34);
+                tag.setAlpha(near ? 1 : 0.5);
             }
         }
 
@@ -508,7 +622,6 @@ export class ArenaScene extends Phaser.Scene{
     private moveToTile(tx: number, ty: number, dir: "down" | "up" | "left" |"right") {
         if (this.isMoving) return; // already gliding — ignore
 
-        //what does this phaser.math.clamp does like meaning of this 
         const nextX = Phaser.Math.Clamp(tx, 0, this.maxTileX);
         const nextY = Phaser.Math.Clamp(ty, 0, this.maxTileY);
         if (nextX === this.tileX && nextY === this.tileY) return;
@@ -529,7 +642,7 @@ export class ArenaScene extends Phaser.Scene{
         this.moveRef?.current?.({ x: this.tileX, y: this.tileY });
 
 
-        this.player.anims.play("walk-" + dir, true); 
+        this.player.anims.play("walk-" + dir, true);
 
         this.tweens.add({
         targets: this.player,
@@ -582,62 +695,94 @@ export class ArenaScene extends Phaser.Scene{
         }
     }
 
-    // lay a room's floor and draw its walls as thin border lines.
-    // Every wall tile is added to this.blocked so movement collides with it.
-    private buildRoom(
-        rx: number, ry: number, rw: number, rh: number,
-        floorKey: string,
-        door: { side: "top" | "bottom" | "left" | "right"; at: number; span: number },
-        wallColor: number
-    ) {
-        // interior floor
-        this.add.tileSprite(rx * TILE, ry * TILE, rw * TILE, rh * TILE, floorKey)
-            .setOrigin(0, 0).setDepth(-1000);
+    // a horizontal run of wall tiles from x1..x2 at row y (skip = doorway tiles).
+    // every wall tile blocks movement and casts a soft shadow on the row below.
+    private wallRow(x1: number, x2: number, y: number, skip: number[] = []) {
+        for (let x = x1; x <= x2; x++) {
+            if (skip.includes(x)) continue;
+            this.add.image(x * TILE, y * TILE, "wall").setOrigin(0, 0).setDepth(y * TILE + TILE);
+            this.add.rectangle(x * TILE, (y + 1) * TILE, TILE, 5, 0x000000, 0.10)
+                .setOrigin(0, 0).setDepth(-994);
+            this.blocked.add(x + "," + y);
+        }
+    }
 
-        // is (x, y) part of the door opening on this room's edge?
-        const isDoor = (x: number, y: number, side: "top" | "bottom" | "left" | "right") => {
-            if (door.side !== side) return false;
-            if (side === "top" || side === "bottom") {
-                return x >= door.at && x < door.at + door.span;
-            } else {
-                return y >= door.at && y < door.at + door.span;
-            }
+    // a vertical run of wall tiles from y1..y2 at column x (skip = doorway tiles)
+    private wallCol(x: number, y1: number, y2: number, skip: number[] = []) {
+        for (let y = y1; y <= y2; y++) {
+            if (skip.includes(y)) continue;
+            this.add.image(x * TILE, y * TILE, "wall").setOrigin(0, 0).setDepth(y * TILE + TILE);
+            this.blocked.add(x + "," + y);
+        }
+    }
+
+    // paint all the tileable textures (grass, floors, walls, path) in code so the
+    // palette stays calm and consistent — no external floor images needed.
+    private makeTextures() {
+        const g = this.add.graphics();
+
+        // simple deterministic pseudo-random for speckles, so the texture is stable
+        let seed = 7;
+        const rand = () => {
+            seed = (seed * 1103515245 + 12345) % 2147483648;
+            return seed / 2147483648;
         };
 
-        const wallThickness = 6;
-        const color = wallColor;
-
-        // Draw top wall (along y = ry)
-        for (let x = rx; x < rx + rw; x++) {
-            if (isDoor(x, ry, "top")) continue;
-            const wall = this.add.rectangle(x * TILE, ry * TILE, TILE, wallThickness, color).setOrigin(0, 0);
-            wall.setDepth(ry * TILE + wallThickness);
-            this.blocked.add(x + "," + ry);
+        // grass — soft green with light/dark speckles
+        g.clear();
+        g.fillStyle(0x7cc25e); g.fillRect(0, 0, 64, 64);
+        for (let i = 0; i < 90; i++) {
+            const c = [0x74b850, 0x8ccf6b, 0x6fae4c][i % 3]!;
+            g.fillStyle(c, 1);
+            g.fillRect(Math.floor(rand() * 62), Math.floor(rand() * 62), 2, 2);
         }
+        g.generateTexture("grass", 64, 64);
 
-        // Draw bottom wall (along y = ry + rh - 1)
-        for (let x = rx; x < rx + rw; x++) {
-            if (isDoor(x, ry + rh - 1, "bottom")) continue;
-            const wall = this.add.rectangle(x * TILE, (ry + rh - 1) * TILE + TILE - wallThickness, TILE, wallThickness, color).setOrigin(0, 0);
-            wall.setDepth((ry + rh - 1) * TILE + TILE);
-            this.blocked.add(x + "," + (ry + rh - 1));
+        // stone path
+        g.clear();
+        g.fillStyle(0xcdc7b9); g.fillRect(0, 0, 32, 32);
+        g.fillStyle(0xbbb4a4); g.fillRect(0, 0, 32, 1); g.fillRect(0, 0, 1, 32);
+        for (let i = 0; i < 6; i++) {
+            g.fillStyle(0xc2bcae, 1);
+            g.fillRect(Math.floor(rand() * 30), Math.floor(rand() * 30), 2, 2);
         }
+        g.generateTexture("path", 32, 32);
 
-        // Draw left wall (along x = rx)
-        for (let y = ry; y < ry + rh; y++) {
-            if (isDoor(rx, y, "left")) continue;
-            const wall = this.add.rectangle(rx * TILE, y * TILE, wallThickness, TILE, color).setOrigin(0, 0);
-            wall.setDepth(y * TILE + TILE);
-            this.blocked.add(rx + "," + y);
-        }
+        // warm wood floor — light planks with staggered joints
+        g.clear();
+        g.fillStyle(0xe9dcc0); g.fillRect(0, 0, 64, 64);
+        g.fillStyle(0xe4d5b4); g.fillRect(0, 16, 64, 16); g.fillRect(0, 48, 64, 16);
+        g.fillStyle(0xd9c9a5);
+        for (const y of [15, 31, 47, 63]) g.fillRect(0, y, 64, 1);
+        g.fillRect(31, 0, 1, 16); g.fillRect(15, 16, 1, 16);
+        g.fillRect(47, 16, 1, 16); g.fillRect(31, 32, 1, 16);
+        g.fillRect(15, 48, 1, 16); g.fillRect(47, 48, 1, 16);
+        g.generateTexture("floor-wood", 64, 64);
 
-        // Draw right wall (along x = rx + rw - 1)
-        for (let y = ry; y < ry + rh; y++) {
-            if (isDoor(rx + rw - 1, y, "right")) continue;
-            const wall = this.add.rectangle((rx + rw - 1) * TILE + TILE - wallThickness, y * TILE, wallThickness, TILE, color).setOrigin(0, 0);
-            wall.setDepth(y * TILE + TILE);
-            this.blocked.add((rx + rw - 1) + "," + y);
-        }
+        // office carpet — soft periwinkle checker
+        const checker = (key: string, a: number, b: number, cell: number) => {
+            g.clear();
+            g.fillStyle(a); g.fillRect(0, 0, 64, 64);
+            g.fillStyle(b);
+            for (let cx = 0; cx < 64 / cell; cx++)
+                for (let cy = 0; cy < 64 / cell; cy++)
+                    if ((cx + cy) % 2 === 0) g.fillRect(cx * cell, cy * cell, cell, cell);
+            g.generateTexture(key, 64, 64);
+        };
+        checker("floor-office", 0xb9c1de, 0xb3bbda, 16);
+        checker("floor-conf", 0xc6dacd, 0xbfd4c6, 16);
+        checker("floor-lounge", 0xdecdb0, 0xd8c6a6, 16);
+        checker("floor-cafe", 0xeae6db, 0xdfd8c8, 16);
+
+        // wall tile — dark cap on top, lighter face below (fake 2.5D)
+        g.clear();
+        g.fillStyle(0x5a6170); g.fillRect(0, 0, 32, 14);
+        g.fillStyle(0x6b7382); g.fillRect(0, 0, 32, 2);
+        g.fillStyle(0xa6aebc); g.fillRect(0, 14, 32, 18);
+        g.fillStyle(0x8f97a6); g.fillRect(0, 29, 32, 3);
+        g.generateTexture("wall", 32, 32);
+
+        g.destroy();
     }
 
     // build a Gather-style name pill: rounded background + status dot + name text.
@@ -665,8 +810,8 @@ export class ArenaScene extends Phaser.Scene{
 
         // rounded background pill — purple/indigo for you, dark grey/slate for others
         const bg = this.add.graphics();
-        const bgColor = isSelf 
-            ? (isSitting ? 0x4834d4 : 0x6c5ce7) 
+        const bgColor = isSelf
+            ? (isSitting ? 0x4834d4 : 0x6c5ce7)
             : (isSitting ? 0x1e272e : 0x2b2b3c);
         bg.fillStyle(bgColor, 0.9);
         bg.fillRoundedRect(-pillW / 2, -pillH / 2, pillW, pillH, pillH / 2);

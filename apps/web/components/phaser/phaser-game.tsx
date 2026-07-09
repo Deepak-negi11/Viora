@@ -11,9 +11,11 @@ type PhaserGameProps ={
     moveRef?:RefObject<(next:Position) =>void>;
     // userId -> username, so the scene can show real names on pills
     namesRef?:RefObject<Record<string,string>>;
+    // userIds currently near me (for fading far-away avatars)
+    nearbyRef?:RefObject<Set<string>>;
 }
 
-export function PhaserGame({othersRef,moveRef,namesRef}:PhaserGameProps){
+export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -43,6 +45,7 @@ export function PhaserGame({othersRef,moveRef,namesRef}:PhaserGameProps){
                     game.registry.set("othersRef" , othersRef);
                     game.registry.set("moveRef" , moveRef);
                     game.registry.set("namesRef" , namesRef);
+                    game.registry.set("nearbyRef" , nearbyRef);
                 },
             },
             
@@ -54,7 +57,7 @@ export function PhaserGame({othersRef,moveRef,namesRef}:PhaserGameProps){
             gameRef.current = null
         };
 
-    },[othersRef, moveRef, namesRef]);
+    },[othersRef, moveRef, namesRef, nearbyRef]);
     return <div ref ={containerRef} className="h-full w-full"/>
 
 

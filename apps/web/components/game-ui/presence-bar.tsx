@@ -5,6 +5,7 @@ export type PresencePerson = {
   id: string;
   name: string;
   isSelf: boolean;
+  isNearby?: boolean;
 };
 
 type PresenceBarProps = {
@@ -35,11 +36,24 @@ export function PresenceBar({ people }: PresenceBarProps) {
       {/* avatar circles */}
       <ul className="pointer-events-auto flex items-center gap-1.5" aria-label="People in this space">
         {shown.map((person) => (
-          <li key={person.id} title={person.isSelf ? `${person.name} (you)` : person.name}>
+          <li
+            key={person.id}
+            title={
+              person.isSelf
+                ? `${person.name} (you)`
+                : person.isNearby
+                  ? `${person.name} (nearby)`
+                  : person.name
+            }
+          >
             <span
               className={
                 "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white shadow ring-2 " +
-                (person.isSelf ? "bg-indigo-500 ring-indigo-300" : "bg-neutral-700 ring-white/20")
+                (person.isSelf
+                  ? "bg-indigo-500 ring-indigo-300"
+                  : person.isNearby
+                    ? "bg-neutral-700 ring-green-400"
+                    : "bg-neutral-700 ring-white/20")
               }
             >
               {person.name.trim().charAt(0).toUpperCase() || "?"}

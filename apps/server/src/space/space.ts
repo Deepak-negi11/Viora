@@ -16,6 +16,7 @@ type AddElementBody = {
   y?: unknown;
 };
 
+
 export async function handleCreateSpace(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
@@ -54,6 +55,7 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
     return jsonMessage("Map not found");
   }
 
+  // explain me this map.mapelemt full thing what is even this 
   const defaultElements = map.mapElements
     .filter((element) => element.elementId && element.x !== null && element.y !== null)
     .map((element) => ({

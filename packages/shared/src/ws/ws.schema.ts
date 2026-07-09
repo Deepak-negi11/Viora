@@ -18,11 +18,6 @@ export const MoveMessage = z.object({
   payload: PositionSchema,
 });
 
-export const ClientMessage = z.discriminatedUnion("type", [
-  JoinMessage,
-  MoveMessage,
-]);
-
 export const SpaceJoinedMessage = z.object({
   type: z.literal("space-joined"),
   payload: z.object({
@@ -71,14 +66,41 @@ export const ErrorMessage = z.object({
   message: z.string(),
 });
 
+
+export const ChatBroadcastMessage = z.object({
+  type:z.literal("chat"),
+  payload:z.object({
+    userId:z.string(),
+    text:z.string(),
+    at:z.number() , 
+  })
+})
+
+//what is this server message 
 export const ServerMessage = z.discriminatedUnion("type", [
-  SpaceJoinedMessage,
-  UserJoinMessage,
-  MovementMessage,
-  MovementRejectedMessage,
-  UserLeftMessage,
-  ErrorMessage,
-]);
+    SpaceJoinedMessage,
+    UserJoinMessage,
+    MovementMessage,
+    MovementRejectedMessage,
+    UserLeftMessage,
+    ErrorMessage,
+    ChatBroadcastMessage, 
+  ]);
+
+
+export const ChatMessage = z.object({
+  type:z.literal("chat"),
+  payload:z.object({
+    text:z.string().min(1).max(500)
+  })
+})
+
+ export const ClientMessage = z.discriminatedUnion("type", [
+    JoinMessage,
+    MoveMessage,
+    ChatMessage, 
+  ]);
+  
 
 export type JoinMessage = z.infer<typeof JoinMessage>;
 export type MoveMessage = z.infer<typeof MoveMessage>;
@@ -91,3 +113,5 @@ export type MovementRejectedMessage = z.infer<typeof MovementRejectedMessage>;
 export type UserLeftMessage = z.infer<typeof UserLeftMessage>;
 export type ErrorMessage = z.infer<typeof ErrorMessage>;
 export type ServerMessage = z.infer<typeof ServerMessage>;
+export type ChatMessage = z.infer<typeof ChatMessage>;
+export type ChatBroadcastMessage = z.infer<typeof ChatBroadcastMessage>;

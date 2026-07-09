@@ -44,6 +44,7 @@ export async function handleBulkMetadata(req: Request): Promise<Response> {
   const avatars = users.map((user) => ({
     userId: user.id,
     imageUrl: user.avatar?.imageUrl ?? null,
+    username: user.username,
   }));
 
   return Response.json({ avatars });

@@ -13,6 +13,7 @@ type RoomEvent = {
 };
 
 let subscriber: Awaited<ReturnType<typeof redis.duplicate>> | null = null;
+// what is this new Set in this 
 const subscribedSpaces = new Set<string>();
 const pendingSubscriptions = new Map<string, Promise<void>>();
 
@@ -66,6 +67,7 @@ async function getSubscriber() {
   return subscriber;
 }
 
+//what is this room and the space differenc in this  both 
 export async function subscribeToSpaceEvents(spaceId: string) {
   if (subscribedSpaces.has(spaceId)) return;
 

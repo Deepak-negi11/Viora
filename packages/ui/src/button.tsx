@@ -13,8 +13,6 @@ type ButtonProps = {
   //what is this && here does meaning of this button html attrbibute what does it does inthei 
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
-//use case of this base what is thie used for i think 
-//in this base when i decrese the size of the px and the py they increase and hte value of the px and the py i increase the size decrese reason behind this adn how does this focus work becasue it is not working for me why is it show
 const base = "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-neutral-400/60 disabled:opacity-50 disabled:pointer-events-none";
 
 //ok so this are the vareint of the button what what type of the button thier will be in the ui

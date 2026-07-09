@@ -5,10 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useSpaceSocket } from "../../../hooks/use-space-socket";
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
+import { ChatPanel } from "../../../components/game-ui/chat-panel";
 import { getUsersMetadata } from "../../../lib/space-api";
 import { getAuthToken } from "../../../lib/auth-token";
 import dynamic from "next/dynamic";
-
+import { isNearby } from "../../../lib/proximity";
 //why this when we are doing the use client then 
 const PhaserGame = dynamic(()=>
   import("../../../components/phaser/phaser-game").then((m) => m.PhaserGame),
@@ -18,7 +19,7 @@ export default function SpacePage() {
   //what is this useParam what dooes this do explain this 
   const params = useParams<{ spaceId: string }>();
   const router = useRouter();
-  const { status, error, selfId, self, others, move } = useSpaceSocket(params.spaceId);
+  const { status, error, selfId, self, others, move, messages, sendChat } = useSpaceSocket(params.spaceId);
 
   const othersRef = useRef(others);
   othersRef.current = others;
@@ -33,6 +34,18 @@ export default function SpacePage() {
   // constantly) doesn't refetch the same names over and over
   const fetchedIds = useRef<Set<string>>(new Set());
 
+  //why usememo 
+  const nearbyIds = useMemo(()=>{
+    const set = new Set<string>();
+    ///explain this for loops 
+    for (const [ id ,pos] of Object.entries(others)){
+      if(isNearby(self,pos)) set.add(id);
+    }
+    return set;
+  },[self ,others])
+  const nearbyRef = useRef(nearbyIds);
+  nearbyRef.current = nearbyIds;
+  
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
@@ -58,13 +71,13 @@ export default function SpacePage() {
 
   // everyone in the room (self first), for the presence bar
   const people = useMemo(() => {
-    const list: { id: string; name: string; isSelf: boolean }[] = [];
-    if (selfId) list.push({ id: selfId, name: names[selfId] ?? "You", isSelf: true });
+    const list: { id: string; name: string; isSelf: boolean; isNearby: boolean }[] = [];
+    if (selfId) list.push({ id: selfId, name: names[selfId] ?? "You", isSelf: true, isNearby: false });
     for (const id of Object.keys(others)) {
-      list.push({ id, name: names[id] ?? id.slice(0, 5), isSelf: false });
+      list.push({ id, name: names[id] ?? id.slice(0, 5), isSelf: false, isNearby: nearbyIds.has(id) });
     }
     return list;
-  }, [selfId, others, names]);
+  }, [selfId, others, names, nearbyIds]);
 
   return (
     // relative so the ControlBar overlay can position itself over the canvas
@@ -72,10 +85,11 @@ export default function SpacePage() {
   bg-neutral-950 text-neutral-100">
         {status === "joined" ? (
           <>
-            <PhaserGame othersRef={othersRef} moveRef={moveRef} namesRef={namesRef}
+            <PhaserGame othersRef={othersRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef}
   />
             {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
             <PresenceBar people={people} />
+            <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
             <ControlBar
               displayName={(selfId ? names[selfId] : undefined) ?? "You"}
               onLeave={() => router.push("/spaces")}

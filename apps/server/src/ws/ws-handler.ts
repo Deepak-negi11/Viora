@@ -31,18 +31,26 @@ type MovePayload = {
   y: number;
 };
 
+type ChatPayload = {
+  text:string;
+};
+
+//what is this use case of this make socket data use case and why to even write this it does what just get the values and return them still why this 
 export function makeSocketData(): SocketData {
   return { x: 0, y: 0 };
 }
 
+// what is this ws.send what is this send does where does it send this
 function send(ws: Socket, message: unknown) {
   ws.send(JSON.stringify(message));
 }
 
+//what is this from 
 function isOneTileMove(from: { x: number; y: number }, to: MovePayload) {
+  //what does this math.abs and explain this math to be what is this math 
   return Math.abs(to.x - from.x) + Math.abs(to.y - from.y) === 1;
 }
-
+//in this ws:socket i think it is a connection like the web socket sonnection tell what is it if not the connection 
 export async function onMessage(ws: Socket, raw: string | Buffer) {
   let json: unknown;
 
@@ -62,6 +70,8 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
       return handleJoin(ws, parsed.data.payload);
     case "move":
       return handleMove(ws, parsed.data.payload);
+    case "chat":
+      return handleChat(ws, parsed.data.payload)
   }
 }
 
@@ -85,10 +95,12 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
   ws.data.x = spawn.x;
   ws.data.y = spawn.y;
 
+  ///what doe this set useronline does in this a
   await setUserOnline(payload.spaceId, userId, spawn);
 
   const roomUsers = await getRoomUsers(payload.spaceId);
   const existingUsers = roomUsers
+  //what is this doing and i havea questioni. seen a bloack ok the code hy i am not able to read and understnad that and i know this filter loop over an arrayr and fitler thorugh adn give us an arrayr 
     .filter((user) => user.userId !== userId)
     .map((user) => ({
       id: user.userId,
@@ -104,6 +116,7 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
   });
   await subscribeToSpaceEvents(payload.spaceId);
 
+  //what does this send does up here and where doe sit send ot the user or what
   send(ws, {
     type: "space-joined",
     payload: { userId, spawn, users: existingUsers },
@@ -149,6 +162,29 @@ async function handleMove(ws: Socket, payload: MovePayload) {
 
   broadcast(spaceId, userId, message);
   await publishRoomEvent(spaceId, userId, message);
+}
+
+async function handleChat(ws:Socket , payload:ChatPayload) {
+   const { spaceId ,userId} = ws.data;
+   if (!spaceId || !userId) {
+    return send(ws , {type:"error" ,message:"Join a space first"})
+   }
+
+   //what is this now what will be  the paylaod in this and what is this slice(0,500)
+   const text = payload.text.trim().slice(0,500);
+   if(!text) return
+
+   const message = {
+    type:"chat",
+    payload:{userId , text, at:Date.now()},
+    //what does this as const menas in this why we ahve written in this even 
+   } as const;
+
+   // send to everyone else on THIS server, then to other servers via Redis pub/sub
+   broadcast(spaceId , userId , message);
+   await publishRoomEvent(spaceId , userId , message);
+
+
 }
 
 export async function onClose(ws: Socket) {

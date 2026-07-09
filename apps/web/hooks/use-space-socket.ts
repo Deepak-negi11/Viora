@@ -10,6 +10,7 @@ const WS_URL = API_BASE.replace(/^http/, "ws") + "/ws";
 export type Position = { x: number; y: number };
 export type Others = Record<string, Position>;
 type Status = "connecting" | "joined" | "error";
+export type ChatEntry = {id:string ; userId:string ;text:string;at:number};
 
 export function useSpaceSocket(spaceId: string) {
   //what is this useref used for like this and what is this type also ex
@@ -22,6 +23,7 @@ export function useSpaceSocket(spaceId: string) {
   //expain this self
   const [self, setSelf] = useState<Position>({ x: 0, y: 0 });
   const [others, setOthers] = useState<Others>({});
+  const [message , setMessage] = useState<ChatEntry[]>([])
 
   useEffect(() => {
     const token = getAuthToken();
@@ -80,6 +82,14 @@ export function useSpaceSocket(spaceId: string) {
           setError(message.message);
           break;
         }
+        case "chat":{
+          const {userId,text ,at} = message.payload;
+          setMessage((prev)=>[
+            ...prev,
+            {id:`${userId}-${at}-${prev.length}`,userId,text,at}
+          ]);
+          break
+        }
       }
     };
 
@@ -100,5 +110,23 @@ export function useSpaceSocket(spaceId: string) {
     ws.send(JSON.stringify({ type: "move", payload: next }));
   }, []);
 
-  return { status, error, selfId, self, others, move };
+  const sendChat = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const ws = socketRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      ws.send(JSON.stringify({ type: "chat", payload: { text: trimmed } }));
+
+      // optimistically show MY message right away (server only echoes to others)
+      setMessage((prev) => [
+        ...prev,
+        { id: `me-${Date.now()}-${prev.length}`, userId: selfId ?? "me", text: trimmed, at: Date.now() },
+      ]);
+    },
+    [selfId],
+  );
+
+  return { status, error, selfId, self, others, move, messages: message, sendChat };
 }

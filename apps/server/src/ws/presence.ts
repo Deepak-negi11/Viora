@@ -16,6 +16,7 @@ function decode(value: string): Position {
   return { x: x ?? 0, y: y ?? 0 };
 }
 
+//what is this hmset in this 
 export async function setUserOnline(spaceId: string, userId: string, pos: Position) {
   await redis.hmset(roomKey(spaceId), [userId, encode(pos)]);
 }
@@ -24,6 +25,7 @@ export async function setUserPosition(spaceId: string, userId: string, pos: Posi
   await redis.hmset(roomKey(spaceId), [userId, encode(pos)]);
 }
 
+//hmget in this think
 export async function getUserPosition(spaceId: string, userId: string): Promise<Position | null> {
   const value = await redis.hmget(roomKey(spaceId), [userId]);
   const raw = value?.[0];
