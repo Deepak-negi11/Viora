@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { TextField } from "../../components/TextField";
 import { signinUser } from "../../lib/auth-api";
 import { saveAuthToken } from "../../lib/auth-token";
@@ -34,17 +35,16 @@ export default function SigninPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-950 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-        <h1 className="text-center text-sm font-semibold tracking-widest text-neutral-500">
-          2D METAVERSE
-        </h1>
-        <h2 className="mt-2 mb-6 text-center text-2xl font-bold text-neutral-100">
-          Sign in
-        </h2>
+    <main className="grid min-h-screen place-items-center bg-[#dbe8f8] p-4 sm:p-7">
+      <div className="w-full max-w-md border-2 border-[#111827] bg-[#f8fbff] p-6 shadow-[8px_8px_0_#183a8f] sm:p-8">
+        <Link href="/" className="inline-flex items-center gap-2 font-mono text-xs font-bold tracking-[0.1em] text-[#183a8f] underline decoration-[#8da6c9] underline-offset-4 transition-colors hover:text-[#111827]">
+          ← 2D METAVERSE
+        </Link>
+        <p className="mt-9 font-mono text-xs font-bold tracking-[0.1em] text-[#183a8f]">WELCOME BACK</p>
+        <h1 className="mt-2 text-4xl font-bold tracking-[-0.05em] text-[#111827]">Enter your room.</h1>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-[#52627b]">Sign in to return to the places where your team works together.</p>
 
-        //what is this form tag used in 
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form className="mt-7 flex flex-col gap-5" onSubmit={handleSubmit}>
           <TextField
             id="email"
             label="Email"
@@ -66,20 +66,21 @@ export default function SigninPage() {
             required
           />
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="border border-[#b7483d] bg-[#fff4f2] px-3 py-2 text-sm text-[#8b2f29]">{error}</p> : null}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 rounded-lg bg-neutral-100 py-2 font-medium text-neutral-900 transition hover:bg-white disabled:opacity-50"
+            className="mt-1 inline-flex min-h-11 items-center justify-center gap-2 bg-[#183a8f] px-4 py-2 text-sm font-bold text-white shadow-[3px_3px_0_#111827] transition hover:translate-x-px hover:translate-y-px hover:bg-[#2451b2] hover:shadow-[2px_2px_0_#111827] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#183a8f] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
           >
             {isSubmitting ? "Signing in..." : "Sign in"}
+            {!isSubmitting && <ArrowRight size={17} aria-hidden="true" />}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-neutral-400">
+        <p className="mt-7 border-t border-[#b9c7d9] pt-5 text-sm text-[#52627b]">
           New here?{" "}
-          <Link href="/signup" className="font-medium text-neutral-100 hover:underline">
+          <Link href="/signup" className="font-bold text-[#183a8f] underline decoration-[#8da6c9] underline-offset-4 hover:text-[#111827]">
             Sign up
           </Link>
         </p>

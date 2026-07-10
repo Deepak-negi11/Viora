@@ -17,6 +17,7 @@ import {
   handleGetSpace,
   handleAddElement,
   handleListElements,
+  handleGetMessages,
 } from "./src/space/space";
 import { makeSocketData, onMessage, onClose } from "./src/ws/ws-handler";
 import type { SocketData } from "./src/ws/room-manager";
@@ -107,12 +108,16 @@ export function startServer(port: number) {
         DELETE: withCors(handleDeleteSpace),
         OPTIONS: handleCorsPreflight,
       },
+      "/api/v1/space/:spaceId/messages": {
+        GET: withCors(handleGetMessages),
+        OPTIONS: handleCorsPreflight,
+      },
       "/api/v1/elements": { GET: withCors(handleListElements), OPTIONS: handleCorsPreflight },
     },
     fetch(req, server) {
       // Upgrade WebSocket connections on /ws
       if (new URL(req.url).pathname === "/ws") {
-        const ok = server.upgrade<SocketData>(req, { data: makeSocketData() });
+        const ok = server.upgrade(req, { data: makeSocketData() });
         if (ok) return;
         return new Response("WebSocket upgrade failed", { status: 400 });
       }

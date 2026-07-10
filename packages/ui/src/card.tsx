@@ -13,7 +13,7 @@ export function Card({ children, className }: CardProps) {
   return (
     //why we even do this like bg-blue-900/50 like i know it means the 50 percent opacity which mena the colour will come light then why not use the light colour only */}
     // why border red or other border are not applying this reason behind that also */}
-    <div className={cn("rounded-2xl border border-neutral-800 bg-neutral-900 p-6", className)}>
+    <div className={cn("rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-[0_18px_48px_rgba(0,0,0,0.12)]", className)}>
       {children}
 
     </div>

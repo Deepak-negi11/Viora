@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAuthToken } from "../lib/auth-token";
+import { getSpaceMessages } from "../lib/space-api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 const WS_URL = API_BASE.replace(/^http/, "ws") + "/ws";
@@ -11,6 +12,7 @@ export type Position = { x: number; y: number };
 export type Others = Record<string, Position>;
 type Status = "connecting" | "joined" | "error";
 export type ChatEntry = {id:string ; userId:string ;text:string;at:number};
+export type Reaction = { id: string; userId: string; emoji: string; at: number };
 
 export function useSpaceSocket(spaceId: string) {
   //what is this useref used for like this and what is this type also ex
@@ -24,6 +26,9 @@ export function useSpaceSocket(spaceId: string) {
   const [self, setSelf] = useState<Position>({ x: 0, y: 0 });
   const [others, setOthers] = useState<Others>({});
   const [message , setMessage] = useState<ChatEntry[]>([])
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  // a handler the video hook registers, called for each incoming WebRTC signal
+  const signalHandlerRef = useRef<((fromUserId: string, signal: unknown) => void) | null>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -56,6 +61,22 @@ export function useSpaceSocket(spaceId: string) {
             ),
           );
           setStatus("joined");
+
+          // load recent chat history and merge it in front of any live messages
+          const token = getAuthToken();
+          if (token) {
+            getSpaceMessages(token, spaceId)
+              .then((res) => {
+                setMessage((prev) => {
+                  const seen = new Set(prev.map((m) => m.id));
+                  const history = res.messages
+                    .filter((m) => !seen.has(m.id))
+                    .map((m) => ({ id: m.id, userId: m.userId, text: m.text, at: m.at }));
+                  return [...history, ...prev];
+                });
+              })
+              .catch(() => {});
+          }
           break;
         }
         case "user-join":
@@ -89,6 +110,19 @@ export function useSpaceSocket(spaceId: string) {
             {id:`${userId}-${at}-${prev.length}`,userId,text,at}
           ]);
           break
+        }
+        case "reaction": {
+          const { userId, emoji, at } = message.payload;
+          setReactions((prev) => [
+            ...prev.filter((r) => Date.now() - r.at < 6000),
+            { id: `${userId}-${at}`, userId, emoji, at },
+          ]);
+          break;
+        }
+        case "webrtc-signal": {
+          const { fromUserId, signal } = message.payload;
+          signalHandlerRef.current?.(fromUserId, signal);
+          break;
         }
       }
     };
@@ -128,5 +162,37 @@ export function useSpaceSocket(spaceId: string) {
     [selfId],
   );
 
-  return { status, error, selfId, self, others, move, messages: message, sendChat };
+  const sendReaction = useCallback(
+    (emoji: string) => {
+      const ws = socketRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      ws.send(JSON.stringify({ type: "reaction", payload: { emoji } }));
+
+      // optimistically show MY reaction (server only echoes to others)
+      const at = Date.now();
+      setReactions((prev) => [
+        ...prev.filter((r) => at - r.at < 6000),
+        { id: `me-${at}`, userId: selfId ?? "me", emoji, at },
+      ]);
+    },
+    [selfId],
+  );
+
+  // send a WebRTC signal (offer/answer/ICE) to one specific user
+  const sendSignal = useCallback((targetUserId: string, signal: unknown) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "webrtc-signal", payload: { targetUserId, signal } }));
+  }, []);
+
+  // let the video hook plug in its handler for incoming signals
+  const registerSignalHandler = useCallback(
+    (fn: (fromUserId: string, signal: unknown) => void) => {
+      signalHandlerRef.current = fn;
+    },
+    [],
+  );
+
+  return { status, error, selfId, self, others, move, messages: message, sendChat, reactions, sendReaction, sendSignal, registerSignalHandler };
 }

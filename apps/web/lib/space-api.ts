@@ -69,3 +69,31 @@ export function getUsersMetadata(token: string, ids: string[]) {
     { token },
   );
 }
+
+// one stored chat message
+export type StoredMessage = { id: string; userId: string; text: string; at: number };
+
+// recent chat history for a space (oldest first)
+export function getSpaceMessages(token: string, spaceId: string) {
+  return apiRequest<{ messages: StoredMessage[] }>(
+    `/api/v1/space/${spaceId}/messages`,
+    { token },
+  );
+}
+
+// a selectable avatar (character)
+export type Avatar = { id: string; imageUrl: string | null; name: string | null };
+
+// list all avatars a user can choose from
+export function getAvatars(token: string) {
+  return apiRequest<{ avatars: Avatar[] }>("/api/v1/avatars", { token });
+}
+
+// set the signed-in user's avatar
+export function setMyAvatar(token: string, avatarId: string) {
+  return apiRequest<{ message: string }, { avatarId: string }>("/api/v1/user/metadata", {
+    method: "POST",
+    token,
+    body: { avatarId },
+  });
+}

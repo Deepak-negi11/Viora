@@ -4,7 +4,7 @@ import { useEffect , useRef } from "react";
 import Phaser from "phaser";
 import { ArenaScene } from "./scenes/arena-scene";
 import type { RefObject } from "react";
-import type { Others,Position } from "../../hooks/use-space-socket";
+import type { Others,Position,Reaction } from "../../hooks/use-space-socket";
 
 type PhaserGameProps ={
     othersRef?:RefObject<Others>;
@@ -13,9 +13,11 @@ type PhaserGameProps ={
     namesRef?:RefObject<Record<string,string>>;
     // userIds currently near me (for fading far-away avatars)
     nearbyRef?:RefObject<Set<string>>;
+    // recent emoji reactions to float above avatars
+    reactionsRef?:RefObject<Reaction[]>;
 }
 
-export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef}:PhaserGameProps){
+export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -34,7 +36,7 @@ export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef}:PhaserGameProp
         gameRef.current = new Phaser.Game({
             type:Phaser.AUTO,
             parent:containerRef.current,
-            backgroundColor:"#0e0e16",
+            backgroundColor:"#0b110d",
             pixelArt:true,
             scale:{
                 mode:Phaser.Scale.RESIZE
@@ -46,6 +48,7 @@ export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef}:PhaserGameProp
                     game.registry.set("moveRef" , moveRef);
                     game.registry.set("namesRef" , namesRef);
                     game.registry.set("nearbyRef" , nearbyRef);
+                    game.registry.set("reactionsRef" , reactionsRef);
                 },
             },
             
@@ -57,7 +60,7 @@ export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef}:PhaserGameProp
             gameRef.current = null
         };
 
-    },[othersRef, moveRef, namesRef, nearbyRef]);
+    },[othersRef, moveRef, namesRef, nearbyRef, reactionsRef]);
     return <div ref ={containerRef} className="h-full w-full"/>
 
 

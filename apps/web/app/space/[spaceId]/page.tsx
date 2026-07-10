@@ -6,6 +6,8 @@ import { useSpaceSocket } from "../../../hooks/use-space-socket";
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
+import { VideoLayer } from "../../../components/game-ui/video-tile";
+import { useProximityVideo } from "../../../hooks/use-proximity-video";
 import { getUsersMetadata } from "../../../lib/space-api";
 import { getAuthToken } from "../../../lib/auth-token";
 import dynamic from "next/dynamic";
@@ -19,12 +21,14 @@ export default function SpacePage() {
   //what is this useParam what dooes this do explain this 
   const params = useParams<{ spaceId: string }>();
   const router = useRouter();
-  const { status, error, selfId, self, others, move, messages, sendChat } = useSpaceSocket(params.spaceId);
+  const { status, error, selfId, self, others, move, messages, sendChat, reactions, sendReaction, sendSignal, registerSignalHandler } = useSpaceSocket(params.spaceId);
 
   const othersRef = useRef(others);
   othersRef.current = others;
   const moveRef = useRef(move);
   moveRef.current = move;
+  const reactionsRef = useRef(reactions);
+  reactionsRef.current = reactions;
 
   // userId -> username. We fetch names for whoever we see and hand them to Phaser.
   const [names, setNames] = useState<Record<string, string>>({});
@@ -45,6 +49,14 @@ export default function SpacePage() {
   },[self ,others])
   const nearbyRef = useRef(nearbyIds);
   nearbyRef.current = nearbyIds;
+
+  // WebRTC proximity video: opens a camera/mic connection to each nearby user
+  const { localStream, remoteStreams, micOn, camOn, toggleMic, toggleCam } = useProximityVideo({
+    selfId,
+    nearbyIds,
+    sendSignal,
+    registerSignalHandler,
+  });
   
   useEffect(() => {
     const token = getAuthToken();
@@ -85,18 +97,29 @@ export default function SpacePage() {
   bg-neutral-950 text-neutral-100">
         {status === "joined" ? (
           <>
-            <PhaserGame othersRef={othersRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef}
+            <PhaserGame othersRef={othersRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
   />
             {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
             <PresenceBar people={people} />
+            <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} selfId={selfId} />
             <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
             <ControlBar
               displayName={(selfId ? names[selfId] : undefined) ?? "You"}
               onLeave={() => router.push("/spaces")}
+              onReact={sendReaction}
+              micOn={micOn}
+              camOn={camOn}
+              onToggleMic={toggleMic}
+              onToggleCam={toggleCam}
             />
           </>
         ) : (
-          <p className="p-6">{error ?? "Connecting…"}</p>
+          <div className="grid h-full place-items-center bg-[#dbe8f8] p-6 text-[#111827]">
+            <div className="border-2 border-[#111827] bg-[#f8fbff] p-6 text-center shadow-[5px_5px_0_#183a8f]">
+              <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f]">JOINING SPACE</p>
+              <p className="mt-2 text-lg font-bold tracking-[-0.03em]">{error ?? "Connecting to the room…"}</p>
+            </div>
+          </div>
         )}
       </div>
   );

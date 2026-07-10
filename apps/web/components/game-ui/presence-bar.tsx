@@ -23,12 +23,12 @@ export function PresenceBar({ people }: PresenceBarProps) {
   return (
     <div className="pointer-events-none absolute left-4 top-4 flex flex-col items-start gap-2">
       {/* live count */}
-      <div className="pointer-events-auto inline-flex items-center gap-2 rounded-xl bg-neutral-900/90 px-3 py-2 shadow-lg ring-1 ring-white/10 backdrop-blur">
+      <div className="pointer-events-auto inline-flex items-center gap-2 border border-[#3a4962] bg-[#111827]/95 px-3 py-2 shadow-lg backdrop-blur">
         <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60 motion-reduce:animate-none" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
         </span>
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-semibold text-white">
           {people.length} {people.length === 1 ? "person" : "people"} online
         </span>
       </div>
@@ -50,10 +50,10 @@ export function PresenceBar({ people }: PresenceBarProps) {
               className={
                 "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white shadow ring-2 " +
                 (person.isSelf
-                  ? "bg-indigo-500 ring-indigo-300"
+                  ? "bg-[#183a8f] ring-[#aebeff]"
                   : person.isNearby
-                    ? "bg-neutral-700 ring-green-400"
-                    : "bg-neutral-700 ring-white/20")
+                    ? "bg-[#344563] ring-green-400"
+                    : "bg-[#344563] ring-white/20")
               }
             >
               {person.name.trim().charAt(0).toUpperCase() || "?"}
@@ -62,7 +62,7 @@ export function PresenceBar({ people }: PresenceBarProps) {
         ))}
         {extra > 0 && (
           <li title={`${extra} more`}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-800 text-xs font-medium text-neutral-300 ring-2 ring-white/10">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26334a] text-xs font-medium text-neutral-200 ring-2 ring-white/10">
               +{extra}
             </span>
           </li>

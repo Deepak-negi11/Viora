@@ -71,3 +71,8 @@ export function updatePosition(spaceId: string, userId: string, x: number, y: nu
     member.y = y;
   }
 }
+
+export function sendToUser(spaceId:string , userId:string,message:unknown){
+  const member = rooms.get(spaceId)?.get(userId)
+  if(member) member.socket.send(JSON.stringify(message))
+}

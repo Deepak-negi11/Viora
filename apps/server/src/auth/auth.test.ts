@@ -1,12 +1,11 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import type { Server } from "bun";
 import axios from "axios";
 import { startServer } from "../../index";
 
 const PORT = 4001;
 const BACKEND_URL = `http://localhost:${PORT}`;
 
-let server: Server;
+let server: ReturnType<typeof startServer>;
 
 beforeAll(() => {
   server = startServer(PORT);

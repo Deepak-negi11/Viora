@@ -1,14 +1,49 @@
 @import "tailwindcss";
 
 :root {
-    --background: #ffffff;
-    --foreground: #171717;
-
+    --background: oklch(0.98 0.003 100);
+    --foreground: oklch(0.16 0.008 100);
+    --surface: oklch(1 0 0);
+    --surface-raised: oklch(0.96 0.004 100);
+    --line: oklch(0.86 0.008 100);
+    --muted: oklch(0.47 0.012 100);
+    --accent: oklch(0.35 0.02 140);
+    --accent-strong: oklch(0.27 0.02 140);
+    --font-inter: var(--font-manrope);
+    --font-space: var(--font-manrope);
+    --font-roboto-mono: var(--font-plex-mono);
 }
 
 @theme inline {
-    --font-sans: var(--font-inter), system-ui, sans-serif;
-    --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
+    --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-plex-mono), ui-monospace, monospace;
     --color-background: var(--background);
-    --color-foregorund: var(--foreground);
+    --color-foreground: var(--foreground);
+}
+
+* {
+    border-color: var(--line);
+}
+
+html {
+    background: var(--background);
+}
+
+body {
+    min-height: 100vh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-synthesis: none;
+}
+
+button,
+a,
+input {
+    -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+    background: #c7ff5e;
+    color: #10170f;
 }

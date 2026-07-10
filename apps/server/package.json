@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch dev.ts",
-    "start": "bun dev.ts"
+    "start": "bun dev.ts",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"

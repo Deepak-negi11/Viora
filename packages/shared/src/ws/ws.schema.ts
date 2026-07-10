@@ -76,6 +76,35 @@ export const ChatBroadcastMessage = z.object({
   })
 })
 
+// what the server SENDS to everyone when someone reacts with an emoji
+export const ReactionBroadcastMessage = z.object({
+  type: z.literal("reaction"),
+  payload: z.object({
+    userId: z.string(),
+    emoji: z.string(),
+    at: z.number(),
+  }),
+});
+
+// a WebRTC "signal" = an SDP offer/answer, or an ICE candidate, that two peers swap
+export const RtcSignal = z.object({
+  kind: z.enum(["offer", "answer", "candidate"]),
+  sdp: z.string().optional(),
+  candidate: z.any().optional(),
+});
+
+// browser -> server: "relay this signal to targetUserId"
+export const WebRtcSignalMessage = z.object({
+  type: z.literal("webrtc-signal"),
+  payload: z.object({ targetUserId: z.string(), signal: RtcSignal }),
+});
+
+// server -> browser: "fromUserId sent you this signal"
+export const WebRtcSignalBroadcast = z.object({
+  type: z.literal("webrtc-signal"),
+  payload: z.object({ fromUserId: z.string(), signal: RtcSignal }),
+});
+
 //what is this server message 
 export const ServerMessage = z.discriminatedUnion("type", [
     SpaceJoinedMessage,
@@ -85,6 +114,8 @@ export const ServerMessage = z.discriminatedUnion("type", [
     UserLeftMessage,
     ErrorMessage,
     ChatBroadcastMessage, 
+    ReactionBroadcastMessage,
+    WebRtcSignalBroadcast,
   ]);
 
 
@@ -95,12 +126,21 @@ export const ChatMessage = z.object({
   })
 })
 
+// what the browser SENDS when you tap an emoji in the control bar
+export const ReactionMessage = z.object({
+  type: z.literal("reaction"),
+  payload: z.object({
+    emoji: z.string().min(1).max(8),
+  }),
+});
+
  export const ClientMessage = z.discriminatedUnion("type", [
     JoinMessage,
     MoveMessage,
     ChatMessage, 
+    ReactionMessage,
+    WebRtcSignalMessage,
   ]);
-  
 
 export type JoinMessage = z.infer<typeof JoinMessage>;
 export type MoveMessage = z.infer<typeof MoveMessage>;
@@ -115,3 +155,7 @@ export type ErrorMessage = z.infer<typeof ErrorMessage>;
 export type ServerMessage = z.infer<typeof ServerMessage>;
 export type ChatMessage = z.infer<typeof ChatMessage>;
 export type ChatBroadcastMessage = z.infer<typeof ChatBroadcastMessage>;
+export type ReactionMessage = z.infer<typeof ReactionMessage>;
+export type ReactionBroadcastMessage = z.infer<typeof ReactionBroadcastMessage>;
+export type WebRtcSignalMessage = z.infer<typeof WebRtcSignalMessage>;
+export type WebRtcSignalBroadcast = z.infer<typeof WebRtcSignalBroadcast>;

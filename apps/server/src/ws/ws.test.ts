@@ -250,4 +250,124 @@ describe("WebSocket", () => {
       wsA.close();
     });
   });
+
+  describe("chat", () => {
+    test("broadcasts a chat message to other users", async () => {
+      const { token: tokenA, spaceId } = await setupUserAndSpace();
+      const { token: tokenB } = await setupUserAndSpace();
+
+      const wsA = new TestSocket(WS_URL);
+      await wsA.waitForOpen();
+      wsA.send({ type: "join", payload: { spaceId, token: tokenA } });
+      await wsA.nextMessage(); // space-joined
+
+      const wsB = new TestSocket(WS_URL);
+      await wsB.waitForOpen();
+      wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
+      await wsB.nextMessage(); // space-joined
+      await wsA.nextMessage(); // user-join for B
+
+      wsB.send({ type: "chat", payload: { text: "hello team" } });
+
+      const chat = await wsA.nextMessage();
+      expect(chat.type).toBe("chat");
+      expect(chat.payload?.text).toBe("hello team");
+      expect(chat.payload?.userId).toBeString();
+      expect(chat.payload?.at).toBeNumber();
+
+      wsA.close();
+      wsB.close();
+    });
+
+    test("persists chat so history can be fetched later", async () => {
+      const { token: tokenA, spaceId } = await setupUserAndSpace();
+      const { token: tokenB } = await setupUserAndSpace();
+
+      const wsA = new TestSocket(WS_URL);
+      await wsA.waitForOpen();
+      wsA.send({ type: "join", payload: { spaceId, token: tokenA } });
+      await wsA.nextMessage();
+
+      const wsB = new TestSocket(WS_URL);
+      await wsB.waitForOpen();
+      wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
+      await wsB.nextMessage();
+      await wsA.nextMessage();
+
+      wsB.send({ type: "chat", payload: { text: "persist me" } });
+      await wsA.nextMessage(); // chat broadcast arrives only after the DB write
+
+      const history = await http.get(`/api/v1/space/${spaceId}/messages`, {
+        headers: { Authorization: `Bearer ${tokenA}` },
+      });
+      expect(history.status).toBe(200);
+      const texts = (history.data.messages as Array<{ text: string }>).map((m) => m.text);
+      expect(texts).toContain("persist me");
+
+      wsA.close();
+      wsB.close();
+    });
+  });
+
+  describe("reactions", () => {
+    test("broadcasts an emoji reaction to other users", async () => {
+      const { token: tokenA, spaceId } = await setupUserAndSpace();
+      const { token: tokenB } = await setupUserAndSpace();
+
+      const wsA = new TestSocket(WS_URL);
+      await wsA.waitForOpen();
+      wsA.send({ type: "join", payload: { spaceId, token: tokenA } });
+      await wsA.nextMessage();
+
+      const wsB = new TestSocket(WS_URL);
+      await wsB.waitForOpen();
+      wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
+      await wsB.nextMessage();
+      await wsA.nextMessage();
+
+      wsB.send({ type: "reaction", payload: { emoji: "👍" } });
+
+      const reaction = await wsA.nextMessage();
+      expect(reaction.type).toBe("reaction");
+      expect(reaction.payload?.emoji).toBe("👍");
+      expect(reaction.payload?.userId).toBeString();
+
+      wsA.close();
+      wsB.close();
+    });
+  });
+
+  describe("webrtc signaling", () => {
+    test("relays a signal only to the targeted user", async () => {
+      const { token: tokenA, spaceId } = await setupUserAndSpace();
+      const { token: tokenB } = await setupUserAndSpace();
+
+      const wsA = new TestSocket(WS_URL);
+      await wsA.waitForOpen();
+      wsA.send({ type: "join", payload: { spaceId, token: tokenA } });
+      const joinedA = await wsA.nextMessage();
+      const userIdA = joinedA.payload?.userId as string;
+
+      const wsB = new TestSocket(WS_URL);
+      await wsB.waitForOpen();
+      wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
+      const joinedB = await wsB.nextMessage();
+      const userIdB = joinedB.payload?.userId as string;
+      await wsA.nextMessage(); // A gets user-join for B
+
+      // A sends a signal aimed at B — only B should receive it
+      wsA.send({
+        type: "webrtc-signal",
+        payload: { targetUserId: userIdB, signal: { kind: "offer", sdp: "fake-sdp" } },
+      });
+
+      const signal = await wsB.nextMessage();
+      expect(signal.type).toBe("webrtc-signal");
+      expect(signal.payload?.fromUserId).toBe(userIdA);
+      expect((signal.payload?.signal as { kind?: string })?.kind).toBe("offer");
+
+      wsA.close();
+      wsB.close();
+    });
+  });
 });

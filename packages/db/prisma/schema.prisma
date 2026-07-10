@@ -84,3 +84,14 @@ model mapElements {
   x         Int?
   y         Int?
 }
+
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  spaceId   String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([spaceId, createdAt])
+}

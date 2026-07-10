@@ -2,12 +2,12 @@ import Phaser from "phaser";
 
 const TILE = 32; // pixels per tile: every grid cell is 32x32 screen pixels
 
-const COLS = 40;
-const ROWS = 30;
+const COLS = 44;
+const ROWS = 34;
 export class ArenaScene extends Phaser.Scene{
     // spawn on the stone path just outside the office entrance
-    private tileX = 19;
-    private tileY = 27;
+    private tileX = 21;
+    private tileY = 31;
 
     private maxTileX = 0;
     private maxTileY = 0;
@@ -22,6 +22,14 @@ export class ArenaScene extends Phaser.Scene{
     private namesRef?: {current:Record<string,string>}
     // userIds currently near me (for fading far-away avatars)
     private nearbyRef?: {current:Set<string>}
+    // recent emoji reactions to float above avatars, + ids we've already shown
+    private reactionsRef?: {current:{id:string;userId:string;emoji:string;at:number}[]}
+    private shownReactions = new Set<string>();
+    // avatar character keys: userId -> "adam"|"alex"|"bob"|"amelia" for other players; self tracked separately
+    private avatarsRef?: {current:Record<string,string>}
+    private selfCharRef?: {current:string}
+    private selfChar = "adam";
+    private otherChars: Record<string,string> = {};
     // the name currently SHOWN on each other player's pill, so we can rebuild it when the real name loads
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
@@ -54,6 +62,26 @@ export class ArenaScene extends Phaser.Scene{
             frameWidth:16,
             frameHeight:32
         });
+        // extra characters (same 384x32 layout as adam, so identical walk frames)
+        this.load.spritesheet("alex", "/assets/alex-run.png", { frameWidth: 16, frameHeight: 32 });
+        this.load.spritesheet("bob", "/assets/bob-run.png", { frameWidth: 16, frameHeight: 32 });
+        this.load.spritesheet("amelia", "/assets/amelia-run.png", { frameWidth: 16, frameHeight: 32 });
+        // The seated sheets use a different layout from the walking strip: the side poses
+        // are 32px wide, while the front-facing desk pose remains 16px wide.
+        this.load.spritesheet("adam-sit-side", "/Modern tiles_Free/Characters_free/Adam_sit2_16x16.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+        });
+        this.load.spritesheet("adam-sit-front", "/Modern tiles_Free/Characters_free/Adam_sit3_16x16.png", {
+            frameWidth: 16,
+            frameHeight: 32,
+        });
+        // The original 24-frame sit sheet is the only one with a back view — used for
+        // "up" seats (desks), where the avatar faces away from the camera.
+        this.load.spritesheet("adam-sit", "/Modern tiles_Free/Characters_free/Adam_sit_16x16.png", {
+            frameWidth: 16,
+            frameHeight: 32,
+        });
 
         // furniture pieces (cut from the LimeZu Interiors tileset)
         for (const i of [6, 7, 8, 9, 12, 17, 19, 20, 22, 23]) {
@@ -66,6 +94,17 @@ export class ArenaScene extends Phaser.Scene{
             "lamp-warm", "lamp-blue", "shelf-single",
         ]) {
             this.load.image(n, "/assets/furniture/sub/" + n + ".png");
+        }
+        // Custom generated pixel assets (tools/pixel-gen) — the Gather-style furniture set.
+        this.load.image("lounge-chair", "/assets/custom/lounge-chair-sprite.png");
+        for (const n of [
+            "desk-monitor", "office-chair", "office-chair-red", "cabinet",
+            "whiteboard", "water-cooler", "conf-table", "tv-wall",
+            "sofa-red-wide", "sofa-blue-wide", "coffee-round", "coffee-rect",
+            "beanbag", "bookshelf-big", "plant-tall", "plant-fern",
+            "ping-pong", "foosball", "arcade",
+        ]) {
+            this.load.image(n, "/assets/custom/" + n + ".png");
         }
         // outdoor sprites (cut from the Serene Village tileset)
         for (const n of [
@@ -84,45 +123,80 @@ export class ArenaScene extends Phaser.Scene{
         this.makeTextures();
 
         // ============================================================
-        // 1. OUTDOORS — grass everywhere + a stone path to the door
+        // 1. OUTDOORS — grass everywhere, a stone path to the door, a pond
         // ============================================================
         this.add.tileSprite(0, 0, worldWidth, worldHeight, "grass").setOrigin(0, 0).setDepth(-1010);
-        this.add.tileSprite(18 * TILE, 26 * TILE, 4 * TILE, 4 * TILE, "path").setOrigin(0, 0).setDepth(-1005);
+        this.add.tileSprite(20 * TILE, 30 * TILE, 4 * TILE, 4 * TILE, "path").setOrigin(0, 0).setDepth(-1005);
+
+        // pond beside the entrance path (Gather's outdoor water feature)
+        const pondG = this.add.graphics();
+        pondG.fillStyle(0x5b8fb5, 1);
+        pondG.fillEllipse(29 * TILE, 31.5 * TILE, 122, 78);
+        pondG.fillStyle(0x7db8d8, 1);
+        pondG.fillEllipse(29 * TILE, 31.5 * TILE, 100, 58);
+        pondG.fillStyle(0xa8d4e8, 0.8);
+        pondG.fillEllipse(28.3 * TILE, 31.1 * TILE, 30, 12);
+        pondG.setDepth(-1004);
+        for (let x = 27; x <= 30; x++) {
+            for (let y = 30; y <= 32; y++) this.blocked.add(x + "," + y);
+        }
 
         // ============================================================
-        // 2. THE BUILDING — one connected office, x3..36 / y2..26
+        // 2. THE BUILDING — one connected office, x3..40 / y2..29
+        // Perimeter = private offices (3 left, 3 right, 2 top + cafe alcove).
+        // Centre hub = walled meeting room, open lounge, coworking pods,
+        // game corner (bottom-right) and kitchen (bottom-left).
         // ============================================================
         // wood floor under the whole building
-        this.add.tileSprite(3 * TILE, 2 * TILE, 34 * TILE, 25 * TILE, "floor-wood").setOrigin(0, 0).setDepth(-1000);
+        this.add.tileSprite(3 * TILE, 2 * TILE, 38 * TILE, 28 * TILE, "floor-wood").setOrigin(0, 0).setDepth(-1000);
 
         const zone = (x: number, y: number, w: number, h: number, key: string) =>
             this.add.tileSprite(x * TILE, y * TILE, w * TILE, h * TILE, key).setOrigin(0, 0).setDepth(-998);
 
-        // carpet in the 4 offices along the top
-        for (const ox of [4, 11, 23, 30]) zone(ox, 3, 6, 6, "floor-office");
-        zone(4, 14, 9, 6, "floor-conf");    // conference room
-        zone(27, 14, 9, 6, "floor-lounge"); // lounge
-        zone(4, 21, 10, 5, "floor-cafe");   // café (open corner)
+        // private offices — left column, right column, top row
+        zone(4, 3, 6, 6, "floor-office");
+        zone(4, 10, 6, 6, "floor-office");
+        zone(4, 17, 6, 6, "floor-office");
+        zone(34, 3, 6, 6, "floor-office");
+        zone(34, 10, 6, 6, "floor-office");
+        zone(34, 17, 6, 6, "floor-office");
+        zone(12, 3, 7, 6, "floor-office");
+        zone(24, 3, 7, 6, "floor-office");
+        zone(20, 3, 3, 6, "floor-cafe");     // cafe alcove between the top offices
+        // central hub
+        zone(13, 12, 7, 7, "floor-conf");    // meeting room
+        zone(22, 11, 10, 8, "floor-lounge"); // lounge
+        zone(12, 21, 10, 6, "floor-cafe");   // coworking pods
+        zone(34, 24, 6, 5, "floor-office");  // game corner
+        zone(4, 24, 6, 5, "floor-cafe");     // kitchen
 
         // --- walls ---
-        this.wallRow(3, 36, 2);                          // building top
-        this.wallRow(3, 36, 26, [18, 19, 20, 21]);       // building bottom, entrance gap
-        this.wallCol(3, 2, 26);                          // building left
-        this.wallCol(36, 2, 26);                         // building right
-        // office dividers + office fronts (each with a 2-tile doorway)
-        for (const x of [10, 17, 22, 29]) this.wallCol(x, 3, 9);
-        this.wallRow(4, 9, 9, [6, 7]);
-        this.wallRow(11, 16, 9, [13, 14]);
-        this.wallRow(23, 28, 9, [25, 26]);
-        this.wallRow(30, 35, 9, [32, 33]);
-        // conference room (door on its right wall)
-        this.wallRow(4, 13, 13);
-        this.wallRow(4, 13, 20);
-        this.wallCol(13, 13, 20, [16, 17]);
-        // lounge (door on its left wall)
-        this.wallRow(26, 35, 13);
-        this.wallRow(26, 35, 20);
-        this.wallCol(26, 13, 20, [16, 17]);
+        this.wallRow(3, 40, 2);                          // building top
+        this.wallRow(3, 40, 29, [20, 21, 22, 23]);       // building bottom, entrance gap
+        this.wallCol(3, 2, 29);                          // building left
+        this.wallCol(40, 2, 29);                         // building right
+        // left office column: shared front wall + room dividers (2-tile doors)
+        this.wallCol(10, 3, 23, [5, 6, 12, 13, 19, 20]);
+        this.wallRow(4, 9, 9);
+        this.wallRow(4, 9, 16);
+        this.wallRow(4, 9, 23);
+        // right office column (mirrored)
+        this.wallCol(33, 3, 23, [5, 6, 12, 13, 19, 20]);
+        this.wallRow(34, 39, 9);
+        this.wallRow(34, 39, 16);
+        this.wallRow(34, 39, 23);
+        // top offices flanking the cafe alcove
+        this.wallCol(11, 3, 8);
+        this.wallCol(19, 3, 8);
+        this.wallRow(11, 19, 9, [14, 15]);
+        this.wallCol(23, 3, 8);
+        this.wallCol(31, 3, 8);
+        this.wallRow(23, 31, 9, [26, 27]);
+        // meeting room (doors on the east wall and the south wall)
+        this.wallRow(12, 20, 11);
+        this.wallCol(12, 12, 19);
+        this.wallCol(20, 12, 18, [14, 15]);
+        this.wallRow(12, 20, 19, [16, 17]);
 
         // --- soft area rugs (painted, sit above floors, below furniture) ---
         const rug = (x: number, y: number, w: number, h: number, color: number, alpha: number) => {
@@ -131,9 +205,10 @@ export class ArenaScene extends Phaser.Scene{
             g.fillRoundedRect(x * TILE, y * TILE, w * TILE, h * TILE, 10);
             g.setDepth(-996);
         };
-        rug(14, 14, 12, 6, 0x51608a, 0.14); // coworking area
-        rug(28, 17, 6, 3, 0xb08968, 0.28);  // lounge
-        rug(18, 22, 4, 4, 0x8a5a44, 0.25);  // entrance runner
+        rug(13, 12, 7, 7, 0x5f7d6d, 0.12);  // meeting room
+        rug(22, 11, 10, 8, 0xa06f53, 0.18); // lounge
+        rug(12, 21, 10, 6, 0x59726a, 0.16); // coworking
+        rug(34, 24, 6, 5, 0x53667e, 0.14);  // game corner
 
         // --- zone labels (Gather-style, painted on the floor) ---
         const label = (x: number, y: number, text: string) => {
@@ -144,15 +219,21 @@ export class ArenaScene extends Phaser.Scene{
                 color: "#3f4654",
             }).setAlpha(0.7).setDepth(-990).setResolution(3);
         };
-        label(4.3, 3.25, "OFFICE 1");
-        label(11.3, 3.25, "OFFICE 2");
-        label(23.3, 3.25, "OFFICE 3");
-        label(30.3, 3.25, "OFFICE 4");
-        label(4.3, 14.2, "CONFERENCE");
-        label(17.6, 13.25, "COWORKING");
-        label(27.3, 14.2, "LOUNGE");
-        label(4.3, 21.2, "CAFE");
-        label(19.2, 21.2, "LOBBY");
+        label(12.3, 8.15, "PRIVATE OFFICE 1");
+        label(24.3, 8.15, "PRIVATE OFFICE 2");
+        label(4.3, 8.15, "PRIVATE OFFICE 3");
+        label(4.3, 15.15, "PRIVATE OFFICE 4");
+        label(4.3, 22.15, "PRIVATE OFFICE 5");
+        label(34.3, 8.15, "PRIVATE OFFICE 6");
+        label(34.3, 15.15, "PRIVATE OFFICE 7");
+        label(34.3, 22.15, "PRIVATE OFFICE 8");
+        label(20.2, 8.15, "CAFE");
+        label(13.3, 18.2, "MEETING ROOM");
+        label(22.3, 11.15, "LOUNGE");
+        label(12.3, 26.2, "COWORKING");
+        label(34.3, 28.15, "GAMES");
+        label(4.3, 28.15, "KITCHEN");
+        label(20.4, 26.2, "LOBBY");
 
         // ============================================================
         // 3. OUTDOOR DECOR — trees ring the map, flowers soften it
@@ -166,11 +247,11 @@ export class ArenaScene extends Phaser.Scene{
             this.blocked.add((tx + 1) + "," + ty);
         };
         // top edge
-        [0, 3, 6, 9, 12, 15, 19, 23, 26, 29, 32, 35, 38].forEach((x, i) => tree(x, 1, i));
+        [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42].forEach((x, i) => tree(x, 0, i));
         // left + right edges
-        [4, 8, 12, 16, 20, 24].forEach((y, i) => { tree(0, y, i + 1); tree(38, y, i); });
-        // bottom edge (keep the path clear)
-        [1, 5, 9, 13, 23, 27, 31, 35].forEach((x, i) => tree(x, 29, i + 2));
+        [3, 7, 11, 15, 19, 23, 27, 31].forEach((y, i) => { tree(0, y, i + 1); tree(42, y, i); });
+        // bottom edge (keep the path and the pond clear)
+        [1, 5, 9, 13, 16, 25, 33, 37, 40].forEach((x, i) => tree(x, 32, i + 2));
 
         // small decor: bushes + rocks block, flowers are walk-over
         const decor = (key: string, tx: number, ty: number, block: boolean) => {
@@ -179,20 +260,20 @@ export class ArenaScene extends Phaser.Scene{
                 .setDepth(block ? (ty + 1) * TILE : ty * TILE);
             if (block) this.blocked.add(tx + "," + ty);
         };
-        decor("bush-small", 2, 27, true);
-        decor("bush-small", 37, 27, true);
-        decor("bush-ball", 2, 4, true);
-        decor("bush-ball", 37, 12, true);
-        decor("rock-small", 1, 27, true);
-        decor("rock-med", 38, 27, true);
-        decor("flower-red", 17, 27, false);
-        decor("flower-blue", 22, 27, false);
-        decor("flower-yellow", 5, 27, false);
-        decor("flower-red", 33, 28, false);
-        decor("flower-blue", 2, 13, false);
-        decor("flower-yellow", 37, 20, false);
-        decor("flower-blue", 12, 27, false);
-        decor("flower-red", 27, 28, false);
+        decor("rock-small", 26, 30, true);
+        decor("rock-med", 31, 31, true);
+        decor("bush-small", 2, 30, true);
+        decor("bush-small", 41, 30, true);
+        decor("bush-ball", 2, 5, true);
+        decor("bush-ball", 41, 13, true);
+        decor("flower-red", 18, 30, false);
+        decor("flower-blue", 24, 30, false);
+        decor("flower-yellow", 6, 30, false);
+        decor("flower-red", 35, 31, false);
+        decor("flower-blue", 2, 14, false);
+        decor("flower-yellow", 41, 21, false);
+        decor("flower-blue", 13, 31, false);
+        decor("flower-red", 32, 30, false);
 
         // ============================================================
         // 4. FURNITURE
@@ -222,9 +303,11 @@ export class ArenaScene extends Phaser.Scene{
         // a sittable chair: draws the sprite and registers the tile in chairMap.
         // the tile stays walkable — walking onto it means "sit down".
         const chair = (key: string, tx: number, ty: number, dir: "up" | "down" | "left" | "right") => {
+            // an "up" chair has its back toward the camera, so it must draw OVER the
+            // seated avatar; every other direction sits behind the avatar.
             this.add.image((tx + 0.5) * TILE, (ty + 1) * TILE + 6, key)
                 .setOrigin(0.5, 1)
-                .setDepth(ty * TILE - 2);
+                .setDepth(dir === "up" ? (ty + 1) * TILE + 8 : ty * TILE - 2);
             this.chairMap[tx + "," + ty] = dir;
         };
 
@@ -232,121 +315,125 @@ export class ArenaScene extends Phaser.Scene{
         const pot = (key: string, tx: number, ty: number) =>
             placeItem(key, tx, ty, { blockedOffsets: [[0, 0]] });
 
-        // Workstation (piece_6, 3x4 tiles): desk row on top, whiteboard/cabinet rows
-        // below, and the chair pocket at (+1,+1) left walkable for sitting.
-        const deskOpts = {
-            blockedOffsets: [
-                [0, 0], [1, 0], [2, 0],
-                [0, 2], [1, 2], [2, 2],
-                [0, 3], [1, 3], [2, 3],
-            ] as [number, number][],
-            chairOffsets: [{ dx: 1, dy: 1, dir: "up" as const }]
+        // a multi-seat piece (sofa, armchair, beanbag): drawn like a chair (behind the
+        // avatar) with one chairMap entry per seat tile. Seat tiles stay walkable.
+        const bench = (key: string, tx: number, ty: number, seats: number, dir: "up" | "down" | "left" | "right") => {
+            this.add.image((tx + seats / 2) * TILE, (ty + 1) * TILE + 6, key)
+                .setOrigin(0.5, 1)
+                .setDepth(dir === "up" ? (ty + 1) * TILE + 8 : ty * TILE - 2);
+            for (let i = 0; i < seats; i++) this.chairMap[(tx + i) + "," + ty] = dir;
         };
 
-        // --- 4 offices along the top: workstation + bookshelf + plant ---
-        for (const ox of [4, 11, 23, 30]) {
-            placeItem("furn6", ox, 3, deskOpts);
-            placeItem("shelf-single", ox + 4, 3);
-            pot("pot-1", ox + 5, 8);
+        // something hung on a wall row (window, tv, whiteboard) — draws over the wall
+        const wallMount = (key: string, cx: number, wy: number, scale = 1) =>
+            this.add.image(cx * TILE, wy * TILE + 20, key).setScale(scale).setDepth(wy * TILE + 40);
+
+        // a private-office workstation: generated desk + monitor with the task chair
+        // pocket below it (avatar sits facing up, tucked under the desk).
+        const workstation = (dx: number, dy: number) => {
+            placeItem("desk-monitor", dx, dy);
+            chair("office-chair", dx, dy + 2, "up");
+        };
+
+        // --- private offices: desk + monitor, task chair, plant ---
+        // left column (offices 3-5)
+        for (const oy of [3, 10, 17]) {
+            workstation(6, oy);
+            placeItem("cabinet", 4, oy);
+            pot("plant-fern", 9, oy + 5);
         }
-        // window over each office + wall art in the reception nook
-        for (const ox of [4, 11, 23, 30]) {
-            this.add.image((ox + 3) * TILE, 2 * TILE + 12, "furn22").setDepth(2 * TILE + 40);
+        // right column (offices 6-8)
+        for (const oy of [3, 10, 17]) {
+            workstation(36, oy);
+            placeItem("cabinet", 38, oy);
+            pot("plant-fern", 34, oy + 5);
         }
-        this.add.image(20 * TILE, 2 * TILE + 16, "furn17").setDepth(2 * TILE + 40);
+        // top row (offices 1-2)
+        workstation(14, 3);
+        placeItem("bookshelf-big", 17, 3);
+        pot("plant-tall", 12, 7);
+        workstation(27, 3);
+        placeItem("bookshelf-big", 24, 3);
+        pot("plant-tall", 30, 7);
+        // windows on the exterior wall over the top offices
+        wallMount("furn22", 15, 2, 0.6);
+        wallMount("furn22", 27, 2, 0.6);
 
-        // --- reception nook between the offices ---
-        pot("pot-2", 18, 3);
-        pot("pot-1", 21, 3);
-        chair("seat-bl", 19, 4, "down");
-        chair("seat-bl", 20, 4, "down");
-        placeItem("lamp-warm", 18, 7, { blockedOffsets: [[0, 0]] });
-        placeItem("lamp-blue", 21, 7, { blockedOffsets: [[0, 0]] });
+        // --- cafe alcove (top-centre) ---
+        placeItem("furn9", 20, 3);                        // counter
+        pot("coffee-round", 21, 6);
+        placeItem("water-cooler", 22, 7, { blockedOffsets: [[0, 0]] });
 
-        // --- corridor decor ---
-        placeItem("furn19", 4, 10, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
-        pot("pot-2", 35, 10);
+        // --- meeting room: long conference table, 12 seats, wall TV ---
+        placeItem("conf-table", 14, 14);
+        chair("office-chair-red", 14, 13, "down");
+        chair("office-chair-red", 15, 13, "down");
+        chair("office-chair-red", 16, 13, "down");
+        chair("office-chair-red", 17, 13, "down");
+        chair("office-chair-red", 14, 16, "up");
+        chair("office-chair-red", 15, 16, "up");
+        chair("office-chair-red", 16, 16, "up");
+        chair("office-chair-red", 17, 16, "up");
+        chair("office-chair-red", 13, 14, "right");
+        chair("office-chair-red", 13, 15, "right");
+        chair("office-chair-red", 18, 14, "left");
+        chair("office-chair-red", 18, 15, "left");
+        wallMount("tv-wall", 16, 11);
+        placeItem("cabinet", 13, 12);
+        placeItem("water-cooler", 19, 12, { blockedOffsets: [[0, 0]] });
+        pot("plant-fern", 19, 18);
 
-        // --- conference room ---
-        placeItem("table-big", 7, 15);
-        chair("chair-wood", 7, 14, "down");
-        chair("chair-wood", 8, 14, "down");
-        chair("chair-wood", 7, 17, "up");
-        chair("chair-wood", 8, 17, "up");
-        chair("chair-wood", 6, 15, "right");
-        chair("chair-wood", 6, 16, "right");
-        chair("chair-wood", 9, 15, "left");
-        chair("chair-wood", 9, 16, "left");
-        // whiteboard mounted on the top wall
-        this.add.image(5.5 * TILE, 13 * TILE + 24, "furn12").setDepth(13 * TILE + 40);
-        pot("pot-1", 4, 14);
-        pot("pot-2", 4, 19);
-        placeItem("lamp-warm", 12, 14, { blockedOffsets: [[0, 0]] });
+        // --- lounge: sofas around coffee tables, books, beanbags ---
+        placeItem("plant-tall", 22, 11, { blockedOffsets: [[0, 0]] });
+        placeItem("bookshelf-big", 28, 11);
+        placeItem("bookshelf-big", 30, 11);
+        bench("sofa-red-wide", 23, 13, 3, "down");
+        placeItem("coffee-rect", 23, 15);
+        bench("sofa-blue-wide", 27, 14, 3, "down");
+        pot("coffee-round", 28, 16);
+        bench("beanbag", 22, 16, 1, "down");
+        bench("beanbag", 26, 17, 1, "down");
+        bench("lounge-chair", 31, 15, 1, "down");
+        pot("plant-fern", 22, 18);
+        placeItem("whiteboard", 25, 11, { blockedOffsets: [[0, 0], [1, 0]] });
 
-        // --- coworking area (open, center) ---
-        placeItem("furn6", 15, 14, deskOpts);
-        placeItem("furn6", 19, 14, deskOpts);
-        // collab table on the right
-        placeItem("table-big", 23, 15);
-        chair("chair-wood2", 23, 14, "down");
-        chair("chair-wood2", 24, 14, "down");
-        chair("chair-wood2", 23, 17, "up");
-        chair("chair-wood2", 24, 17, "up");
-        chair("chair-wood2", 22, 15, "right");
-        chair("chair-wood2", 22, 16, "right");
-        // planter dividers (leave the entrance axis open)
-        placeItem("furn19", 15, 19, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
-        placeItem("furn19", 22, 19, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
+        // --- coworking pods: four shared desks in two rows ---
+        workstation(13, 21);
+        workstation(17, 21);
+        workstation(13, 24);
+        workstation(17, 24);
+        placeItem("water-cooler", 21, 21, { blockedOffsets: [[0, 0]] });
+        pot("plant-fern", 21, 26);
+        pot("plant-tall", 16, 21);
 
-        // --- lounge ---
-        placeItem("furn8", 29, 14, { blockedOffsets: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [3, 1]] });
-        // sectional: three armchairs in a row around a coffee table
-        chair("seat-bl", 29, 17, "down");
-        chair("seat-bl", 30, 17, "down");
-        chair("seat-bl", 31, 17, "down");
-        placeItem("table-small", 30, 18);
-        chair("seat-bl", 34, 17, "down");
-        pot("pot-1", 27, 19);
-        placeItem("lamp-warm", 27, 14, { blockedOffsets: [[0, 0]] });
-        placeItem("lamp-blue", 35, 19, { blockedOffsets: [[0, 0]] });
-        pot("pot-2", 35, 14);
+        // --- game corner (bottom-right) ---
+        placeItem("ping-pong", 34, 24);
+        placeItem("arcade", 39, 24);
+        placeItem("foosball", 36, 27);
+        pot("plant-fern", 34, 28);
 
-        // --- café (open, bottom-left) ---
-        placeItem("furn9", 5, 21);                                              // kitchen counter
-        placeItem("furn20", 10, 21, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // fridge
-        placeItem("furn23", 12, 21, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // vending machine
-        placeItem("table-big", 7, 23);
-        chair("chair-wood", 7, 25, "up");
-        chair("chair-wood", 8, 25, "up");
-        chair("chair-wood", 6, 23, "right");
-        chair("chair-wood", 6, 24, "right");
-        chair("chair-wood", 9, 23, "left");
-        chair("chair-wood", 9, 24, "left");
-        pot("pot-2", 4, 25);
+        // --- kitchen (bottom-left) ---
+        placeItem("furn9", 4, 24);                                              // counter
+        placeItem("furn20", 8, 24, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // fridge
+        placeItem("furn23", 4, 27, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // vending machine
+        placeItem("table-big", 6, 26);
+        chair("chair-wood", 5, 26, "right");
+        chair("chair-wood", 5, 27, "right");
+        chair("chair-wood", 8, 26, "left");
+        chair("chair-wood", 8, 27, "left");
 
-        // --- lobby (bottom-center, by the entrance) ---
-        chair("seat-bl", 15, 22, "down");
-        chair("seat-bl", 16, 22, "down");
-        chair("seat-bl", 17, 22, "down");
-        chair("seat-bl", 23, 22, "down");
-        chair("seat-bl", 24, 22, "down");
-        pot("pot-1", 25, 22);
-        placeItem("furn19", 15, 25, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
-        placeItem("furn19", 22, 25, { blockedOffsets: [[0, 0], [1, 0], [2, 0]] });
+        // --- lobby (bottom-centre): open, with soft flanking decor ---
+        placeItem("lamp-warm", 18, 26, { blockedOffsets: [[0, 0]] });
+        placeItem("lamp-blue", 25, 26, { blockedOffsets: [[0, 0]] });
+        pot("plant-tall", 19, 28);
+        pot("plant-tall", 24, 28);
 
-        // --- quiet corner (bottom-right) ---
-        placeItem("furn8", 26, 21);
-        placeItem("table-big", 31, 22);
-        chair("chair-wood2", 31, 21, "down");
-        chair("chair-wood2", 32, 21, "down");
-        chair("chair-wood2", 31, 24, "up");
-        chair("chair-wood2", 32, 24, "up");
-        chair("chair-wood2", 30, 22, "right");
-        chair("chair-wood2", 30, 23, "right");
-        chair("chair-wood2", 33, 22, "left");
-        chair("chair-wood2", 33, 23, "left");
-        placeItem("lamp-blue", 35, 21, { blockedOffsets: [[0, 0]] });
-        pot("pot-1", 35, 25);
+        // --- hub dividers: loose ferns keep sightlines open, Gather-style ---
+        pot("plant-fern", 22, 20);
+        pot("plant-fern", 26, 20);
+        pot("plant-fern", 30, 20);
+        pot("pot-2", 11, 24);
+        pot("pot-1", 32, 22);
 
         // ============================================================
         // 5. PLAYER, INPUT, CAMERA
@@ -386,6 +473,24 @@ export class ArenaScene extends Phaser.Scene{
         this.anims.generateFrameNumbers("adam", { start: 0, end: 5
         }), frameRate: 10, repeat: -1 });
 
+        // seated idle loops — sit2 holds the side poses, sit3 the front pose,
+        // and the original 24-frame sheet supplies the only back view (desks).
+        this.anims.create({ key: "sit-left", frames:
+        this.anims.generateFrameNumbers("adam-sit-side", { start: 0, end: 5
+        }), frameRate: 4, repeat: -1 });
+
+        this.anims.create({ key: "sit-right", frames:
+        this.anims.generateFrameNumbers("adam-sit-side", { start: 6, end: 11
+        }), frameRate: 4, repeat: -1 });
+
+        this.anims.create({ key: "sit-down", frames:
+        this.anims.generateFrameNumbers("adam-sit-front", { start: 0, end: 5
+        }), frameRate: 4, repeat: -1 });
+
+        this.anims.create({ key: "sit-up", frames:
+        this.anims.generateFrameNumbers("adam-sit", { start: 6, end: 11
+        }), frameRate: 4, repeat: -1 });
+
         this.input.keyboard?.on("keydown-LEFT", () => this.move(-1,
         0));
         this.input.keyboard?.on("keydown-RIGHT", () => this.move(1,
@@ -409,39 +514,34 @@ export class ArenaScene extends Phaser.Scene{
         this.moveRef = this.registry.get("moveRef");
         this.namesRef = this.registry.get("namesRef");
         this.nearbyRef = this.registry.get("nearbyRef");
+        this.reactionsRef = this.registry.get("reactionsRef");
 
 
         this.cameras.main.setBounds(0,0,worldWidth,worldHeight);
         this.cameras.main.startFollow(this.player , true ,0.1 , 0.1);
 
-        this.cameras.main.setZoom(2);
+        // ?zoom=1 in the URL shows the whole map (handy for layout debugging)
+        const dbgZoom = Number(new URLSearchParams(window.location.search).get("zoom"));
+        this.cameras.main.setZoom(dbgZoom > 0 ? dbgZoom : 2);
 
     }
 
     // Phaser runs update() every frame — we use it to draw other players and keep the name tags in place
     update() {
+        // pop any new emoji reactions above their avatar
+        this.spawnReactions();
         // --- keep MY shadow, pill, and draw-order in sync every frame ---
         const currentTileKey = this.tileX + "," + this.tileY;
         const chairDir = this.chairMap[currentTileKey];
         const isSelfSitting = !!chairDir && !this.isMoving;
 
         if (isSelfSitting && chairDir) {
-            let offsetX = 0;
-            let offsetY = -12;
-            if (chairDir === "down") offsetY = 12;
-            if (chairDir === "left") offsetX = -12;
-            if (chairDir === "right") offsetX = 12;
-
-            this.player.setPosition(
-                this.tileX * TILE + TILE / 2 + offsetX,
-                this.tileY * TILE + TILE / 2 + offsetY
-            );
-            this.player.setScale(1.6);
-            this.player.setFrame(this.standingFrame(chairDir));
-            if (this.player.anims.isPlaying) {
-                this.player.anims.stop();
-            }
+            const seat = this.seatedPoint(this.tileX, this.tileY, chairDir);
+            this.player.setPosition(seat.x, seat.y);
+            this.setSittingPose(this.player, chairDir);
+            this.player.setScale(2.0); // same size seated as standing, like Gather
         } else {
+            this.setStandingPose(this.player);
             this.player.setScale(2.0);
             if (!this.isMoving) {
                 this.player.setPosition(
@@ -452,25 +552,23 @@ export class ArenaScene extends Phaser.Scene{
         }
 
         const myFeet = this.player.y + this.player.displayHeight / 2;
-        if (isSelfSitting && chairDir === "up") {
-            // Draw behind the desk (desk bottom edge is at tileY * TILE)
-            this.player.setDepth(this.tileY * TILE - 1);
-        } else {
-            this.player.setDepth(myFeet);
-        }
+        // A seated avatar must remain visible. Feet-based depth keeps a person below a
+        // table in front of it, while a person above the table stays naturally behind it.
+        this.player.setDepth(myFeet);
 
         // shadow sits at my feet and just under me in draw order
         this.playerShadow.setPosition(this.player.x, this.player.y + this.player.displayHeight / 2 - 6);
         this.playerShadow.setDepth(this.player.depth - 2);
+        this.playerShadow.setAlpha(isSelfSitting ? 0.08 : 0.25);
 
-        // Keep my name pill updated and glued just above me
-        const selfShownName = "You" + (isSelfSitting ? " (sitting)" : "");
-        if (this.selfTagName !== selfShownName) {
+        // Keep the name pill compact. Sitting is already obvious from the pose and amber dot.
+        const selfTagState = isSelfSitting ? "You:sitting" : "You:standing";
+        if (this.selfTagName !== selfTagState) {
             this.nameTag?.destroy();
-            this.nameTag = this.makeNameTag(selfShownName, true, isSelfSitting);
-            this.selfTagName = selfShownName;
+            this.nameTag = this.makeNameTag("You", true, isSelfSitting);
+            this.selfTagName = selfTagState;
         }
-        this.nameTag.setPosition(this.player.x, this.player.y - 34);
+        this.nameTag.setPosition(this.player.x, this.player.y - 38);
 
         // the newest list of everyone else (userId -> {x, y}), coming from the React hook
         const others = this.otherRef?.current ?? {};
@@ -491,7 +589,7 @@ export class ArenaScene extends Phaser.Scene{
                 // use the real username if we have it yet, otherwise a short id as a placeholder
                 const startName = this.namesRef?.current?.[id] ?? id.slice(0, 5);
                 this.otherTags[id] = this.makeNameTag(startName, false, false);
-                this.otherTagNames[id] = startName;
+                this.otherTagNames[id] = `${startName}:standing`;
             } else {
                 const last = this.otherTiles[id];
                 if (last && (last.x !== p.x || last.y !== p.y)) {
@@ -532,19 +630,12 @@ export class ArenaScene extends Phaser.Scene{
             const isOtherSitting = !!otherChairDir && !isOtherMoving;
 
             if (isOtherSitting && otherChairDir) {
-                let offsetX = 0;
-                let offsetY = -12;
-                if (otherChairDir === "down") offsetY = 12;
-                if (otherChairDir === "left") offsetX = -12;
-                if (otherChairDir === "right") offsetX = 12;
-
-                sprite.setPosition(px + offsetX, py + offsetY);
-                sprite.setScale(1.6);
-                sprite.setFrame(this.standingFrame(otherChairDir));
-                if (sprite.anims.isPlaying) {
-                    sprite.anims.stop();
-                }
+                const seat = this.seatedPoint(p.x, p.y, otherChairDir);
+                sprite.setPosition(seat.x, seat.y);
+                this.setSittingPose(sprite, otherChairDir);
+                sprite.setScale(2.0); // same size seated as standing, like Gather
             } else {
+                this.setStandingPose(sprite);
                 sprite.setScale(2.0);
                 if (!isOtherMoving) {
                     sprite.setPosition(px, py);
@@ -552,11 +643,7 @@ export class ArenaScene extends Phaser.Scene{
             }
 
             const feet = sprite.y + sprite.displayHeight / 2;
-            if (isOtherSitting && otherChairDir === "up") {
-                sprite.setDepth(p.y * TILE - 1);
-            } else {
-                sprite.setDepth(feet);
-            }
+            sprite.setDepth(feet);
 
             const shadow = this.otherShadows[id];
             if (shadow) {
@@ -568,21 +655,21 @@ export class ArenaScene extends Phaser.Scene{
             // default to visible when we have no proximity data (e.g. the /phaser sandbox).
             const near = this.nearbyRef?.current?.has(id) ?? true;
             sprite.setAlpha(near ? 1 : 0.35);
-            shadow?.setAlpha(near ? 0.25 : 0.1);
+            shadow?.setAlpha(isOtherSitting ? (near ? 0.08 : 0.03) : (near ? 0.25 : 0.1));
 
             // if the real username has loaded (or changed) since we built the pill, rebuild it
             const realName = this.namesRef?.current?.[id];
             const baseName = realName || id.slice(0, 5);
-            const shownName = baseName + (isOtherSitting ? " (sitting)" : "");
+            const tagState = `${baseName}:${isOtherSitting ? "sitting" : "standing"}`;
 
-            if (this.otherTagNames[id] !== shownName) {
+            if (this.otherTagNames[id] !== tagState) {
                 this.otherTags[id]?.destroy();
-                this.otherTags[id] = this.makeNameTag(shownName, false, isOtherSitting);
-                this.otherTagNames[id] = shownName;
+                this.otherTags[id] = this.makeNameTag(baseName, false, isOtherSitting);
+                this.otherTagNames[id] = tagState;
             }
             const tag = this.otherTags[id];
             if (tag) {
-                tag.setPosition(sprite.x, sprite.y - 34);
+                tag.setPosition(sprite.x, sprite.y - 38);
                 tag.setAlpha(near ? 1 : 0.5);
             }
         }
@@ -641,7 +728,7 @@ export class ArenaScene extends Phaser.Scene{
         // tell the server my new tile so everyone else sees me here
         this.moveRef?.current?.({ x: this.tileX, y: this.tileY });
 
-
+        this.setStandingPose(this.player);
         this.player.anims.play("walk-" + dir, true);
 
         this.tweens.add({
@@ -824,6 +911,77 @@ export class ArenaScene extends Phaser.Scene{
         // group them so we move the whole pill by moving ONE object.
         // setDepth(10000) keeps the pill on top of everything.
         return this.add.container(0, 0, [bg, text, dot]).setDepth(10000);
+    }
+
+    // Each direction has its own seated idle animation (see the sit-* anims in
+    // create()). Playing the loop instead of freezing a frame keeps seated
+    // avatars alive, like Gather's subtle breathing idle.
+    private setSittingPose(sprite: Phaser.GameObjects.Sprite, dir: "down" | "up" | "left" | "right") {
+        const key = "sit-" + dir;
+        if (sprite.anims.currentAnim?.key !== key || !sprite.anims.isPlaying) {
+            sprite.anims.play(key, true);
+        }
+    }
+
+    private setStandingPose(sprite: Phaser.GameObjects.Sprite) {
+        if (sprite.anims.currentAnim?.key.startsWith("sit-") && sprite.anims.isPlaying) {
+            sprite.anims.stop();
+        }
+        if (sprite.texture.key !== "adam") {
+            sprite.setTexture("adam", this.standingFrame(this.facing));
+        }
+    }
+
+    // The chair itself owns one tile. Offsets are tuned per sheet (drawn at 2x,
+    // origin 0.5/0.5) so the torso lands centred on the chair cushion:
+    //   down       sit3, 16px frame, body fills the frame        -> no x shift
+    //   up         original sit sheet, body x6..15 (+6px right)  -> pull left
+    //   left/right sit2, 32px frame, torso centred with the legs
+    //              spilling toward the facing side (under the table)
+    private seatedPoint(tileX: number, tileY: number, dir: "up" | "down" | "left" | "right") {
+        const off = {
+            down:  { dx: 0,  dy: -2 },
+            up:    { dx: -6, dy: -2 },
+            left:  { dx: 0,  dy: 6 },
+            right: { dx: 0,  dy: 6 },
+        }[dir];
+        return {
+            x: tileX * TILE + TILE / 2 + off.dx,
+            y: tileY * TILE + off.dy,
+        };
+    }
+
+    // spawn a floating emoji above the avatar that reacted, then let it drift up and fade.
+    // maps userId -> that player's sprite, or falls back to my own sprite (my own reaction).
+    private spawnReactions() {
+        const list = this.reactionsRef?.current;
+        if (!list) return;
+
+        for (const r of list) {
+            if (this.shownReactions.has(r.id)) continue;
+            this.shownReactions.add(r.id);
+
+            const target = this.otherSprites[r.userId] ?? this.player;
+            const emoji = this.add
+                .text(target.x, target.y - 40, r.emoji, { fontSize: "24px" })
+                .setOrigin(0.5, 1)
+                .setDepth(20000);
+
+            this.tweens.add({
+                targets: emoji,
+                y: target.y - 90,
+                alpha: 0,
+                duration: 1800,
+                ease: "Cubic.easeOut",
+                onComplete: () => emoji.destroy(),
+            });
+        }
+
+        // forget ids that have aged out of the React list, so the Set stays small
+        const liveIds = new Set(list.map((r) => r.id));
+        for (const id of this.shownReactions) {
+            if (!liveIds.has(id)) this.shownReactions.delete(id);
+        }
     }
 
     private standingFrame(dir:"down"|"up"|"left" | "right"){

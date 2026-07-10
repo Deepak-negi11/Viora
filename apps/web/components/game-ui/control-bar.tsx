@@ -16,11 +16,27 @@ type ControlBarProps = {
   displayName?: string;
   // called when "Leave" is pressed — the page decides where to go (e.g. back to /spaces)
   onLeave?: () => void;
+  // called when you pick an emoji reaction
+  onReact?: (emoji: string) => void;
+  // real mic/camera state + toggles from the WebRTC hook (optional; falls back to local UI state)
+  micOn?: boolean;
+  camOn?: boolean;
+  onToggleMic?: () => void;
+  onToggleCam?: () => void;
 };
 
-export function ControlBar({ displayName = "You", onLeave }: ControlBarProps) {
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+const REACTION_EMOJIS = ["👋", "👍", "❤️", "😂", "🎉", "🙌", "🔥", "👏"];
+
+export function ControlBar({ displayName = "You", onLeave, onReact, micOn: micProp, camOn: camProp, onToggleMic, onToggleCam }: ControlBarProps) {
+  const [localMic, setLocalMic] = useState(true);
+  const [localCam, setLocalCam] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // prefer the real WebRTC controls when the page passes them; otherwise use local UI state
+  const micOn = micProp ?? localMic;
+  const camOn = camProp ?? localCam;
+  const toggleMic = onToggleMic ?? (() => setLocalMic((v) => !v));
+  const toggleCam = onToggleCam ?? (() => setLocalCam((v) => !v));
 
   // first letter for the avatar circle, e.g. "deepak" -> "D"
   const initial = displayName.trim().charAt(0).toUpperCase() || "?";
@@ -28,25 +44,25 @@ export function ControlBar({ displayName = "You", onLeave }: ControlBarProps) {
   return (
     // Full-width strip pinned to the bottom. pointer-events-none means clicks
     // PASS THROUGH the empty areas to the Phaser canvas (so click-to-walk still works).
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3">
       {/* the actual bar re-enables pointer events so its buttons are clickable */}
-      <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-neutral-900/90 px-3 py-2 shadow-xl ring-1 ring-white/10 backdrop-blur">
+      <div className="pointer-events-auto flex max-w-full items-center gap-1.5 border border-[#3a4962] bg-[#111827]/95 px-2 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.34)] backdrop-blur">
         {/* your avatar chip */}
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#183a8f] text-sm font-semibold text-white"
           aria-hidden="true"
         >
           {initial}
         </div>
 
-        <div className="mx-1 h-6 w-px bg-white/10" aria-hidden="true" />
+        <div className="mx-1 h-6 w-px bg-[#3a4962]" aria-hidden="true" />
 
         {/* microphone toggle */}
         <ControlButton
           label={micOn ? "Mute microphone" : "Unmute microphone"}
           pressed={micOn}
           danger={!micOn}
-          onClick={() => setMicOn((v) => !v)}
+          onClick={toggleMic}
         >
           {micOn ? <Mic size={18} /> : <MicOff size={18} />}
         </ControlButton>
@@ -56,24 +72,48 @@ export function ControlBar({ displayName = "You", onLeave }: ControlBarProps) {
           label={camOn ? "Turn camera off" : "Turn camera on"}
           pressed={camOn}
           danger={!camOn}
-          onClick={() => setCamOn((v) => !v)}
+          onClick={toggleCam}
         >
           {camOn ? <Video size={18} /> : <VideoOff size={18} />}
         </ControlButton>
 
-        {/* emoji (does nothing yet) */}
-        <ControlButton label="Send an emoji" onClick={() => {}}>
-          <Smile size={18} />
-        </ControlButton>
+        {/* emoji reactions */}
+        <div className="relative">
+          {pickerOpen && (
+            <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 gap-1 border border-[#3a4962] bg-[#111827] p-2 shadow-xl">
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    onReact?.(emoji);
+                    setPickerOpen(false);
+                  }}
+                  aria-label={`React with ${emoji}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-xl hover:bg-[#26334a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#aebeff]"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+          <ControlButton
+            label="Send a reaction"
+            pressed={pickerOpen}
+            onClick={() => setPickerOpen((v) => !v)}
+          >
+            <Smile size={18} />
+          </ControlButton>
+        </div>
 
-        <div className="mx-1 h-6 w-px bg-white/10" aria-hidden="true" />
+        <div className="mx-1 h-6 w-px bg-[#3a4962]" aria-hidden="true" />
 
         {/* leave the space */}
         <button
           type="button"
           onClick={onLeave}
           aria-label="Leave space"
-          className="flex h-9 items-center gap-2 rounded-xl bg-red-500/90 px-3 text-sm font-medium text-white transition-colors hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300 motion-reduce:transition-none"
+          className="flex h-9 items-center gap-2 rounded-md bg-[#b7483d] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#cb584d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200 motion-reduce:transition-none"
         >
           <LogOut size={18} />
           Leave
@@ -104,11 +144,11 @@ function ControlButton({ label, pressed, danger, onClick, children }: ControlBut
       aria-pressed={pressed}
       title={label}
       className={
-        "flex h-9 w-9 items-center justify-center rounded-xl text-white transition-colors " +
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300 motion-reduce:transition-none " +
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-white transition-colors " +
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aebeff] motion-reduce:transition-none " +
         (danger
-          ? "bg-red-500/90 hover:bg-red-500"
-          : "bg-white/5 hover:bg-white/15")
+          ? "bg-[#b7483d] hover:bg-[#cb584d]"
+          : "bg-[#26334a] hover:bg-[#344563]")
       }
     >
       {children}

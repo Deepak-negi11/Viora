@@ -21,6 +21,8 @@ import {
   unsubscribeFromSpaceEvents,
 } from "./pubsub";
 
+import { sendToUser } from "./room-manager";
+
 type JoinPayload = {
   spaceId: string;
   token: string;
@@ -33,6 +35,14 @@ type MovePayload = {
 
 type ChatPayload = {
   text:string;
+};
+type ReactionPayload = {
+  emoji: string;
+};
+
+type SignalPayload = {
+  targetUserId:string;
+  signal:unknown
 };
 
 //what is this use case of this make socket data use case and why to even write this it does what just get the values and return them still why this 
@@ -71,7 +81,11 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
     case "move":
       return handleMove(ws, parsed.data.payload);
     case "chat":
-      return handleChat(ws, parsed.data.payload)
+      return handleChat(ws, parsed.data.payload);
+    case "reaction":
+      return handleReaction(ws, parsed.data.payload);
+    case "webrtc-signal":
+      return handleSignal(ws, parsed.data.payload)
   }
 }
 
@@ -89,7 +103,7 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
     return send(ws, { type: "error", message: "Space not found" });
   }
 
-  const spawn = { x: 0, y: 0 };
+  const spawn = { x: 19, y: 27 }; // on the stone path outside the office entrance
   ws.data.userId = userId;
   ws.data.spaceId = payload.spaceId;
   ws.data.x = spawn.x;
@@ -164,6 +178,16 @@ async function handleMove(ws: Socket, payload: MovePayload) {
   await publishRoomEvent(spaceId, userId, message);
 }
 
+async function handleSignal(ws:Socket , payload:SignalPayload){
+  const {spaceId , userId} = ws.data;
+  if(!spaceId || !userId) return;
+  sendToUser(spaceId, payload.targetUserId,{
+    type:"webrtc-signal",
+    payload:{fromUserId:userId , signal:payload.signal},
+  })
+
+}
+
 async function handleChat(ws:Socket , payload:ChatPayload) {
    const { spaceId ,userId} = ws.data;
    if (!spaceId || !userId) {
@@ -174,9 +198,14 @@ async function handleChat(ws:Socket , payload:ChatPayload) {
    const text = payload.text.trim().slice(0,500);
    if(!text) return
 
+   // save the message so late joiners / refreshes can load history
+   const saved = await prisma.chatMessage.create({
+     data: { spaceId, userId, text },
+   });
+
    const message = {
     type:"chat",
-    payload:{userId , text, at:Date.now()},
+    payload:{userId , text, at: saved.createdAt.getTime()},
     //what does this as const menas in this why we ahve written in this even 
    } as const;
 
@@ -185,6 +214,24 @@ async function handleChat(ws:Socket , payload:ChatPayload) {
    await publishRoomEvent(spaceId , userId , message);
 
 
+}
+
+async function handleReaction(ws: Socket, payload: ReactionPayload) {
+  const { spaceId, userId } = ws.data;
+  if (!spaceId || !userId) {
+    return send(ws, { type: "error", message: "Join a space first" });
+  }
+
+  const emoji = payload.emoji.slice(0, 8);
+  if (!emoji) return;
+
+  const message = {
+    type: "reaction",
+    payload: { userId, emoji, at: Date.now() },
+  } as const;
+
+  broadcast(spaceId, userId, message);
+  await publishRoomEvent(spaceId, userId, message);
 }
 
 export async function onClose(ws: Socket) {

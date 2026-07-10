@@ -16,23 +16,21 @@ export function ModeToggle() {
         setTheme(resolvedTheme === "dark" ? "light" : "dark")
     }
 
-    if (!mounted) {
-        return (
-            <button>
-                <Sun className="h-[1.2rem] w-[1.2rem]" />
-            </button>
-        )
-    }
+    if (!mounted) return <span className="h-9 w-9" aria-hidden="true" />;
 
     return (
-        <button onClick={handleClick}>
+        <button
+            type="button"
+            onClick={handleClick}
+            aria-label={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+            title={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-sm text-[#4b5a70] transition-colors hover:bg-[#c7d8ee] hover:text-[#112f78] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#12388f]"
+        >
             {resolvedTheme === "dark" ? (
-                <Sun className="h-[1.2rem] w-[1.2rem] " />
+                <Sun className="h-4 w-4" />
             ) : (
-                <Moon className="h-[1.2rem] w-[1.2rem]" />
+                <Moon className="h-4 w-4" />
             )}
         </button>
     )
 }
-
-

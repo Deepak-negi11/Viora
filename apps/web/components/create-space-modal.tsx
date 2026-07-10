@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { ArrowRight, X } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { getAuthToken } from "../lib/auth-token";
 import { createSpace, type SpaceSummary } from "../lib/space-api";
@@ -47,36 +48,47 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#17243a]/55 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-space-title"
+        className="w-full max-w-lg border-2 border-[#111827] bg-[#f8fbff] p-5 shadow-[8px_8px_0_#183a8f] sm:p-7"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-neutral-100">Create a space</h2>
-        <p className="mt-1 text-sm text-neutral-400">Give it a name and a size.</p>
+        <div className="flex items-start justify-between gap-4 border-b-2 border-[#111827] pb-5">
+          <div>
+            <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f]">NEW TEAM SPACE</p>
+            <h2 id="create-space-title" className="mt-2 text-2xl font-bold tracking-[-0.04em] text-[#111827]">Start with a floor plan.</h2>
+            <p className="mt-2 text-sm leading-6 text-[#52627b]">Name the room and pick its working dimensions. You can make it yours from there.</p>
+          </div>
+          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#5e708a] transition-colors hover:bg-[#dbe8f8] hover:text-[#111827] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#183a8f]" aria-label="Close create space dialog">
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
 
-        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form className="mt-6 flex flex-col gap-5" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">
-            <label htmlFor="space-name" className="text-sm text-neutral-300">
-              Name
+            <label htmlFor="space-name" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866]">
+              ROOM NAME
             </label>
             <input
               id="space-name"
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="math-class"
+              placeholder="Design studio"
               required
-              className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus-visible:border-neutral-600 focus-visible:outline-none"
+              className="h-11 border-2 border-[#9eafc6] bg-white px-3 text-sm text-[#111827] outline-none placeholder:text-[#718198] transition-colors focus:border-[#183a8f] focus:ring-2 focus:ring-[#183a8f]/20"
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="space-width" className="text-sm text-neutral-300">
-                Width
+              <label htmlFor="space-width" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866]">
+                WIDTH
               </label>
               <input
                 id="space-width"
@@ -84,12 +96,12 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
                 min={1}
                 value={width}
                 onChange={(event) => setWidth(Number(event.target.value))}
-                className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus-visible:border-neutral-600 focus-visible:outline-none"
+                className="h-11 border-2 border-[#9eafc6] bg-white px-3 text-sm text-[#111827] outline-none transition-colors focus:border-[#183a8f] focus:ring-2 focus:ring-[#183a8f]/20"
               />
             </div>
             <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="space-height" className="text-sm text-neutral-300">
-                Height
+              <label htmlFor="space-height" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866]">
+                HEIGHT
               </label>
               <input
                 id="space-height"
@@ -97,19 +109,20 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
                 min={1}
                 value={height}
                 onChange={(event) => setHeight(Number(event.target.value))}
-                className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus-visible:border-neutral-600 focus-visible:outline-none"
+                className="h-11 border-2 border-[#9eafc6] bg-white px-3 text-sm text-[#111827] outline-none transition-colors focus:border-[#183a8f] focus:ring-2 focus:ring-[#183a8f]/20"
               />
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="border border-[#b7483d] bg-[#fff4f2] px-3 py-2 text-sm text-[#8b2f29]">{error}</p>}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>
+          <div className="mt-1 flex flex-wrap items-center justify-end gap-3 border-t border-[#b9c7d9] pt-5">
+            <Button type="button" variant="ghost" onClick={onClose} className="rounded-sm text-[#4b5a70] hover:bg-[#dbe8f8] hover:text-[#111827]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isSubmitting}>
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="gap-2 rounded-sm bg-[#183a8f] shadow-[3px_3px_0_#111827] hover:bg-[#2451b2]">
               {isSubmitting ? "Creating…" : "Create space"}
+              {!isSubmitting && <ArrowRight size={16} aria-hidden="true" />}
             </Button>
           </div>
         </form>

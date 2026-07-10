@@ -8,6 +8,7 @@ export function parseDimensions(value: string): Dimensions | null {
   if (parts.length !== 2) return null;
 
   const [width, height] = parts.map(Number);
+  if (width === undefined || height === undefined) return null;
   if (!Number.isInteger(width) || !Number.isInteger(height)) return null;
   if (width <= 0 || height <= 0) return null;
 

@@ -9,13 +9,13 @@ type TextFieldProps = {
 export function TextField({ id, label, ...inputProps }: TextFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-neutral-300">
+      <label htmlFor={id} className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866]">
         {label}
       </label>
       <input
         id={id}
         name={id}
-        className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-neutral-400"
+        className="h-11 border-2 border-[#9eafc6] bg-white px-3 text-sm text-[#111827] outline-none transition-colors placeholder:text-[#718198] focus:border-[#183a8f] focus:ring-2 focus:ring-[#183a8f]/20"
         {...inputProps}
       />
     </div>

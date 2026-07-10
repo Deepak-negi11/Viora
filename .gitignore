@@ -40,6 +40,8 @@ yarn-error.log*
 # Local AI agent config, skills, and working notes (do not commit)
 .kiro/
 .claude/
+.agents/
+.codex/
 .skills/
 .impeccable/
 PROGRESS.md

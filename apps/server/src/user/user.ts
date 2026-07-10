@@ -5,7 +5,7 @@ export async function handleUpdateMetadata(req: Request): Promise<Response> {
   const auth = requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  const body = await req.json().catch(() => null);
+  const body = (await req.json().catch(() => null)) as { avatarId?: string } | null;
   const avatarId: string | undefined = body?.avatarId
 
   if (!avatarId) {

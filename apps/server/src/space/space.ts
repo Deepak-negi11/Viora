@@ -84,7 +84,7 @@ export async function handleDeleteSpace(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  const spaceId = req.params.spaceId;
+  const spaceId = new URL(req.url).pathname.split("/").pop() ?? "";
   const space = await prisma.space.findUnique({
     where: { id: spaceId },
   });
@@ -123,7 +123,7 @@ export async function handleGetSpace(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  const spaceId = req.params.spaceId;
+  const spaceId = new URL(req.url).pathname.split("/").pop() ?? "";
   const space = await prisma.space.findUnique({
     where: { id: spaceId },
     include: { elements: { include: { element: true } } },
@@ -189,4 +189,26 @@ export async function handleListElements(_req: Request): Promise<Response> {
       static: element.static,
     })),
   });
+}
+
+
+// GET /api/v1/space/:spaceId/messages — recent chat history (oldest first), capped at 50
+export async function handleGetMessages(req: Request): Promise<Response> {
+  const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
+
+  const parts = new URL(req.url).pathname.split("/");
+  const spaceId = parts[parts.length - 2] ?? ""; // ".../space/<id>/messages"
+
+  const rows = await prisma.chatMessage.findMany({
+    where: { spaceId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const messages = rows
+    .reverse()
+    .map((m) => ({ id: m.id, userId: m.userId, text: m.text, at: m.createdAt.getTime() }));
+
+  return Response.json({ messages });
 }
