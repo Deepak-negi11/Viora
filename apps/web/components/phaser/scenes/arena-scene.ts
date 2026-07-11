@@ -5,9 +5,10 @@ const TILE = 32; // pixels per tile: every grid cell is 32x32 screen pixels
 const COLS = 44;
 const ROWS = 34;
 export class ArenaScene extends Phaser.Scene{
-    // spawn on the stone path just outside the office entrance
-    private tileX = 21;
-    private tileY = 31;
+    // spawn coordinates (overridden by server position in create)
+    private tileX = 19;
+    private tileY = 27;
+    private selfRef?: { current: { x: number; y: number } };
 
     private maxTileX = 0;
     private maxTileY = 0;
@@ -34,9 +35,8 @@ export class ArenaScene extends Phaser.Scene{
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
 
-    // where a click/tap told us to walk to (in tiles), or null when we're not walking to a target
-    private targetX: number | null = null;
-    private targetY: number | null = null;
+    // the remaining tiles of a click-to-walk route (from findPath; already avoids obstacles)
+    private path: { x: number; y: number }[] = [];
     // remembers each other player's last tile, so we only glide them when they actually move
     private otherTiles: Record<string, { x: number; y: number }> = {};
     // mapping of "x,y" to sitting direction
@@ -49,6 +49,8 @@ export class ArenaScene extends Phaser.Scene{
     private otherShadows: Record<string, Phaser.GameObjects.Ellipse> = {};
     // tiles you cannot walk onto (walls, furniture, trees). key format "x,y".
     private blocked = new Set<string>();
+    // wall tiles collected by wallRow/wallCol, rendered joined by drawWalls()
+    private wallCells = new Set<string>();
 
     private player!: Phaser.GameObjects.Sprite
 
@@ -66,22 +68,6 @@ export class ArenaScene extends Phaser.Scene{
         this.load.spritesheet("alex", "/assets/alex-run.png", { frameWidth: 16, frameHeight: 32 });
         this.load.spritesheet("bob", "/assets/bob-run.png", { frameWidth: 16, frameHeight: 32 });
         this.load.spritesheet("amelia", "/assets/amelia-run.png", { frameWidth: 16, frameHeight: 32 });
-        // The seated sheets use a different layout from the walking strip: the side poses
-        // are 32px wide, while the front-facing desk pose remains 16px wide.
-        this.load.spritesheet("adam-sit-side", "/Modern tiles_Free/Characters_free/Adam_sit2_16x16.png", {
-            frameWidth: 32,
-            frameHeight: 32,
-        });
-        this.load.spritesheet("adam-sit-front", "/Modern tiles_Free/Characters_free/Adam_sit3_16x16.png", {
-            frameWidth: 16,
-            frameHeight: 32,
-        });
-        // The original 24-frame sit sheet is the only one with a back view — used for
-        // "up" seats (desks), where the avatar faces away from the camera.
-        this.load.spritesheet("adam-sit", "/Modern tiles_Free/Characters_free/Adam_sit_16x16.png", {
-            frameWidth: 16,
-            frameHeight: 32,
-        });
 
         // furniture pieces (cut from the LimeZu Interiors tileset)
         for (const i of [6, 7, 8, 9, 12, 17, 19, 20, 22, 23]) {
@@ -120,6 +106,21 @@ export class ArenaScene extends Phaser.Scene{
         const worldWidth = COLS * TILE;
         const worldHeight = ROWS * TILE;
 
+        // Get refs from registry
+        this.otherRef = this.registry.get("othersRef");
+        this.selfRef = this.registry.get("selfRef");
+        this.moveRef = this.registry.get("moveRef");
+        this.namesRef = this.registry.get("namesRef");
+        this.nearbyRef = this.registry.get("nearbyRef");
+        this.reactionsRef = this.registry.get("reactionsRef");
+
+        // Override spawn point from server if available
+        const initialPos = this.selfRef?.current;
+        if (initialPos) {
+            this.tileX = initialPos.x;
+            this.tileY = initialPos.y;
+        }
+
         this.makeTextures();
 
         // ============================================================
@@ -150,8 +151,64 @@ export class ArenaScene extends Phaser.Scene{
         // wood floor under the whole building
         this.add.tileSprite(3 * TILE, 2 * TILE, 38 * TILE, 28 * TILE, "floor-wood").setOrigin(0, 0).setDepth(-1000);
 
-        const zone = (x: number, y: number, w: number, h: number, key: string) =>
-            this.add.tileSprite(x * TILE, y * TILE, w * TILE, h * TILE, key).setOrigin(0, 0).setDepth(-998);
+        // --- walls ---
+        // registered BEFORE the floor zones, so zone() can see which sides touch a
+        // wall and stretch the carpet under the wall bar (no wood gap, like Gather)
+        this.wallRow(3, 40, 2);                          // building top
+        this.wallRow(3, 40, 29, [20, 21, 22, 23]);       // building bottom, entrance gap
+        this.wallCol(3, 2, 29);                          // building left
+        this.wallCol(40, 2, 29);                         // building right
+        // left office column: shared front wall + room dividers (2-tile doors)
+        this.wallCol(10, 3, 23, [5, 6, 12, 13, 19, 20]);
+        this.wallRow(4, 9, 9);
+        this.wallRow(4, 9, 16);
+        this.wallRow(4, 9, 23);
+        // right office column (mirrored)
+        this.wallCol(33, 3, 23, [5, 6, 12, 13, 19, 20]);
+        this.wallRow(34, 39, 9);
+        this.wallRow(34, 39, 16);
+        this.wallRow(34, 39, 23);
+        // top offices flanking the cafe alcove.
+        // x11 is left open (no west wall) as a 1-tile corridor so Private Office 3's east
+        // door can reach the hub; office 1 stays defined by its east wall + south door.
+        this.wallCol(19, 3, 8);
+        this.wallRow(12, 19, 9, [14, 15]);
+        this.wallCol(23, 3, 8);
+        this.wallCol(31, 3, 8);
+        this.wallRow(23, 31, 9, [26, 27]);
+        // meeting room (doors on the east wall and the south wall)
+        this.wallRow(12, 20, 11);
+        this.wallCol(12, 12, 19);
+        this.wallCol(20, 12, 18, [14, 15]);
+        this.wallRow(12, 20, 19, [16, 17]);
+
+        // true when any tile of a zone edge sits right next to a wall cell —
+        // used to decide which sides of a room floor should stretch to the wall
+        const edgeTouchesWall = (x: number, y: number, len: number, horizontal: boolean) => {
+            for (let i = 0; i < len; i++) {
+                const tx = horizontal ? x + i : x;
+                const ty = horizontal ? y : y + i;
+                if (this.wallCells.has(tx + "," + ty)) return true;
+            }
+            return false;
+        };
+
+        // room floor: stretches half a tile toward every adjacent wall, so the
+        // carpet runs under the wall bar (which is drawn centred in its tile).
+        // that removes the wood strip between the room and the wall, like Gather.
+        const zone = (x: number, y: number, w: number, h: number, key: string) => {
+            const left = edgeTouchesWall(x - 1, y, h, false) ? 0.5 : 0;
+            const right = edgeTouchesWall(x + w, y, h, false) ? 0.5 : 0;
+            const top = edgeTouchesWall(x, y - 1, w, true) ? 0.5 : 0;
+            const bottom = edgeTouchesWall(x, y + h, w, true) ? 0.5 : 0;
+            this.add.tileSprite(
+                (x - left) * TILE,
+                (y - top) * TILE,
+                (w + left + right) * TILE,
+                (h + top + bottom) * TILE,
+                key,
+            ).setOrigin(0, 0).setDepth(-998);
+        };
 
         // private offices — left column, right column, top row
         zone(4, 3, 6, 6, "floor-office");
@@ -170,33 +227,8 @@ export class ArenaScene extends Phaser.Scene{
         zone(34, 24, 6, 5, "floor-office");  // game corner
         zone(4, 24, 6, 5, "floor-cafe");     // kitchen
 
-        // --- walls ---
-        this.wallRow(3, 40, 2);                          // building top
-        this.wallRow(3, 40, 29, [20, 21, 22, 23]);       // building bottom, entrance gap
-        this.wallCol(3, 2, 29);                          // building left
-        this.wallCol(40, 2, 29);                         // building right
-        // left office column: shared front wall + room dividers (2-tile doors)
-        this.wallCol(10, 3, 23, [5, 6, 12, 13, 19, 20]);
-        this.wallRow(4, 9, 9);
-        this.wallRow(4, 9, 16);
-        this.wallRow(4, 9, 23);
-        // right office column (mirrored)
-        this.wallCol(33, 3, 23, [5, 6, 12, 13, 19, 20]);
-        this.wallRow(34, 39, 9);
-        this.wallRow(34, 39, 16);
-        this.wallRow(34, 39, 23);
-        // top offices flanking the cafe alcove
-        this.wallCol(11, 3, 8);
-        this.wallCol(19, 3, 8);
-        this.wallRow(11, 19, 9, [14, 15]);
-        this.wallCol(23, 3, 8);
-        this.wallCol(31, 3, 8);
-        this.wallRow(23, 31, 9, [26, 27]);
-        // meeting room (doors on the east wall and the south wall)
-        this.wallRow(12, 20, 11);
-        this.wallCol(12, 12, 19);
-        this.wallCol(20, 12, 18, [14, 15]);
-        this.wallRow(12, 20, 19, [16, 17]);
+        // all wall cells are registered — render them as joined segments
+        this.drawWalls();
 
         // --- soft area rugs (painted, sit above floors, below furniture) ---
         const rug = (x: number, y: number, w: number, h: number, color: number, alpha: number) => {
@@ -210,30 +242,7 @@ export class ArenaScene extends Phaser.Scene{
         rug(12, 21, 10, 6, 0x59726a, 0.16); // coworking
         rug(34, 24, 6, 5, 0x53667e, 0.14);  // game corner
 
-        // --- zone labels (Gather-style, painted on the floor) ---
-        const label = (x: number, y: number, text: string) => {
-            this.add.text(x * TILE, y * TILE, text, {
-                fontFamily: "sans-serif",
-                fontSize: "10px",
-                fontStyle: "bold",
-                color: "#3f4654",
-            }).setAlpha(0.7).setDepth(-990).setResolution(3);
-        };
-        label(12.3, 8.15, "PRIVATE OFFICE 1");
-        label(24.3, 8.15, "PRIVATE OFFICE 2");
-        label(4.3, 8.15, "PRIVATE OFFICE 3");
-        label(4.3, 15.15, "PRIVATE OFFICE 4");
-        label(4.3, 22.15, "PRIVATE OFFICE 5");
-        label(34.3, 8.15, "PRIVATE OFFICE 6");
-        label(34.3, 15.15, "PRIVATE OFFICE 7");
-        label(34.3, 22.15, "PRIVATE OFFICE 8");
-        label(20.2, 8.15, "CAFE");
-        label(13.3, 18.2, "MEETING ROOM");
-        label(22.3, 11.15, "LOUNGE");
-        label(12.3, 26.2, "COWORKING");
-        label(34.3, 28.15, "GAMES");
-        label(4.3, 28.15, "KITCHEN");
-        label(20.4, 26.2, "LOBBY");
+
 
         // ============================================================
         // 3. OUTDOOR DECOR — trees ring the map, flowers soften it
@@ -360,11 +369,11 @@ export class ArenaScene extends Phaser.Scene{
         wallMount("furn22", 27, 2, 0.6);
 
         // --- cafe alcove (top-centre) ---
-        placeItem("furn9", 20, 3);                        // counter
+
         pot("coffee-round", 21, 6);
         placeItem("water-cooler", 22, 7, { blockedOffsets: [[0, 0]] });
 
-        // --- meeting room: long conference table, 12 seats, wall TV ---
+        // --- meeting room: long conference table, 8 seats (4 + 4), wall TV ---
         placeItem("conf-table", 14, 14);
         chair("office-chair-red", 14, 13, "down");
         chair("office-chair-red", 15, 13, "down");
@@ -374,10 +383,6 @@ export class ArenaScene extends Phaser.Scene{
         chair("office-chair-red", 15, 16, "up");
         chair("office-chair-red", 16, 16, "up");
         chair("office-chair-red", 17, 16, "up");
-        chair("office-chair-red", 13, 14, "right");
-        chair("office-chair-red", 13, 15, "right");
-        chair("office-chair-red", 18, 14, "left");
-        chair("office-chair-red", 18, 15, "left");
         wallMount("tv-wall", 16, 11);
         placeItem("cabinet", 13, 12);
         placeItem("water-cooler", 19, 12, { blockedOffsets: [[0, 0]] });
@@ -391,8 +396,8 @@ export class ArenaScene extends Phaser.Scene{
         placeItem("coffee-rect", 23, 15);
         bench("sofa-blue-wide", 27, 14, 3, "down");
         pot("coffee-round", 28, 16);
-        bench("beanbag", 22, 16, 1, "down");
-        bench("beanbag", 26, 17, 1, "down");
+        bench("lounge-chair", 22, 16, 1, "down");
+        bench("lounge-chair", 26, 17, 1, "down");
         bench("lounge-chair", 31, 15, 1, "down");
         pot("plant-fern", 22, 18);
         placeItem("whiteboard", 25, 11, { blockedOffsets: [[0, 0], [1, 0]] });
@@ -413,9 +418,6 @@ export class ArenaScene extends Phaser.Scene{
         pot("plant-fern", 34, 28);
 
         // --- kitchen (bottom-left) ---
-        placeItem("furn9", 4, 24);                                              // counter
-        placeItem("furn20", 8, 24, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // fridge
-        placeItem("furn23", 4, 27, { blockedOffsets: [[0, 0], [1, 0], [0, 1], [1, 1]] }); // vending machine
         placeItem("table-big", 6, 26);
         chair("chair-wood", 5, 26, "right");
         chair("chair-wood", 5, 27, "right");
@@ -473,24 +475,6 @@ export class ArenaScene extends Phaser.Scene{
         this.anims.generateFrameNumbers("adam", { start: 0, end: 5
         }), frameRate: 10, repeat: -1 });
 
-        // seated idle loops — sit2 holds the side poses, sit3 the front pose,
-        // and the original 24-frame sheet supplies the only back view (desks).
-        this.anims.create({ key: "sit-left", frames:
-        this.anims.generateFrameNumbers("adam-sit-side", { start: 0, end: 5
-        }), frameRate: 4, repeat: -1 });
-
-        this.anims.create({ key: "sit-right", frames:
-        this.anims.generateFrameNumbers("adam-sit-side", { start: 6, end: 11
-        }), frameRate: 4, repeat: -1 });
-
-        this.anims.create({ key: "sit-down", frames:
-        this.anims.generateFrameNumbers("adam-sit-front", { start: 0, end: 5
-        }), frameRate: 4, repeat: -1 });
-
-        this.anims.create({ key: "sit-up", frames:
-        this.anims.generateFrameNumbers("adam-sit", { start: 6, end: 11
-        }), frameRate: 4, repeat: -1 });
-
         this.input.keyboard?.on("keydown-LEFT", () => this.move(-1,
         0));
         this.input.keyboard?.on("keydown-RIGHT", () => this.move(1,
@@ -501,20 +485,15 @@ export class ArenaScene extends Phaser.Scene{
         1));
 
 
-        // click / tap a tile to walk there. We only remember WHERE you want to go (the target);
-        // stepTowardTarget() then walks one tile at a time, because the server only accepts one-tile moves.
+        // click / tap a tile to walk there. findPath routes AROUND obstacles (BFS); we then
+        // walk it one tile at a time, because the server only accepts one-tile moves.
         this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
-            const tx = Math.floor(pointer.worldX/TILE);
-            const ty = Math.floor(pointer.worldY /TILE)
-            this.targetX = Phaser.Math.Clamp(tx, 0, this.maxTileX);
-            this.targetY = Phaser.Math.Clamp(ty, 0, this.maxTileY);
-            if (!this.isMoving) this.stepTowardTarget();
+            const tx = Phaser.Math.Clamp(Math.floor(pointer.worldX / TILE), 0, this.maxTileX);
+            const ty = Phaser.Math.Clamp(Math.floor(pointer.worldY / TILE), 0, this.maxTileY);
+            this.path = this.findPath(this.tileX, this.tileY, tx, ty);
+            if (!this.isMoving) this.followPath();
         })
-        this.otherRef = this.registry.get("othersRef");
-        this.moveRef = this.registry.get("moveRef");
-        this.namesRef = this.registry.get("namesRef");
-        this.nearbyRef = this.registry.get("nearbyRef");
-        this.reactionsRef = this.registry.get("reactionsRef");
+
 
 
         this.cameras.main.setBounds(0,0,worldWidth,worldHeight);
@@ -528,6 +507,21 @@ export class ArenaScene extends Phaser.Scene{
 
     // Phaser runs update() every frame — we use it to draw other players and keep the name tags in place
     update() {
+        // Check if our position is out of sync with the server's position
+        const serverSelf = this.selfRef?.current;
+        if (serverSelf && !this.isMoving) {
+            if (this.tileX !== serverSelf.x || this.tileY !== serverSelf.y) {
+                // We got rejected or desynced! Snap back to the server's approved tile.
+                this.tileX = serverSelf.x;
+                this.tileY = serverSelf.y;
+                this.player.setPosition(
+                    this.tileX * TILE + TILE / 2,
+                    this.tileY * TILE + TILE / 2
+                );
+                this.path = []; // clear any active path routing
+            }
+        }
+
         // pop any new emoji reactions above their avatar
         this.spawnReactions();
         // --- keep MY shadow, pill, and draw-order in sync every frame ---
@@ -690,7 +684,7 @@ export class ArenaScene extends Phaser.Scene{
     }
 
     private move(dx:number , dy:number){
-
+        this.path = []; // a manual arrow-key press cancels any click-to-walk route
         const dir = dx<0 ?"left" :dx>0 ?"right" :dy<0 ?"up":"down";
         this.moveToTile(this.tileX + dx , this.tileY + dy,dir);
 
@@ -714,10 +708,9 @@ export class ArenaScene extends Phaser.Scene{
         if (nextX === this.tileX && nextY === this.tileY) return;
          // no real move
 
-        // collision: if the next tile is a wall, refuse the move and drop any click target
+        // collision: if the next tile is a wall/furniture, refuse the move and drop the route
         if (this.blocked.has(nextX + "," + nextY)) {
-            this.targetX = null;
-            this.targetY = null;
+            this.path = [];
             return;
         }
 
@@ -739,13 +732,10 @@ export class ArenaScene extends Phaser.Scene{
         ease: "Linear",
         onComplete: () => {
             this.isMoving = false;
-            // if a click told us to keep walking and we're not there yet, take the next step
-            if (this.targetX !== null && (this.tileX !== this.targetX || this.tileY !== this.targetY)) {
-                this.stepTowardTarget();
+            // keep following the route if there are more tiles; otherwise stand still
+            if (this.path.length > 0) {
+                this.followPath();
             } else {
-                // arrived (or it was a single keyboard step) — stop and stand still, facing the last way
-                this.targetX = null;
-                this.targetY = null;
                 this.player.anims.stop();
                 this.player.setFrame(this.standingFrame(dir));
             }
@@ -753,21 +743,62 @@ export class ArenaScene extends Phaser.Scene{
         });
     }
 
-    // take ONE step toward the clicked target tile (sideways first, then up/down).
-    // Each call moves a single tile, which is what the server allows.
-    private stepTowardTarget() {
-        if (this.targetX === null || this.targetY === null) return;
-        let dx = 0;
-        let dy = 0;
-        if (this.targetX !== this.tileX) dx = this.targetX > this.tileX ? 1 : -1;
-        else if (this.targetY !== this.tileY) dy = this.targetY > this.tileY ? 1 : -1;
-        if (dx === 0 && dy === 0) {
-            // already on the target tile — clear it
-            this.targetX = null;
-            this.targetY = null;
-            return;
+    // walk the next tile of the current route (one tile at a time — the server only allows that).
+    private followPath() {
+        const next = this.path.shift();
+        if (!next) return;
+        const dx = next.x - this.tileX;
+        const dy = next.y - this.tileY;
+        const dir = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
+        this.moveToTile(next.x, next.y, dir);
+    }
+
+    // Breadth-first search over walkable tiles: the shortest 4-direction route from
+    // (sx,sy) to (gx,gy) that avoids every blocked tile. If the goal itself is blocked or
+    // unreachable, it routes to the closest reachable tile instead — so clicking a wall or
+    // a desk still walks you right up to it, like Gather/Zep (no more getting stuck).
+    private findPath(sx: number, sy: number, gx: number, gy: number): { x: number; y: number }[] {
+        const key = (x: number, y: number) => x + "," + y;
+        const start = key(sx, sy);
+        const goal = key(gx, gy);
+        const visited = new Set<string>([start]);
+        const prev = new Map<string, string>();
+        const queue: [number, number][] = [[sx, sy]];
+        let best: [number, number] = [sx, sy];
+        let bestDist = Math.abs(sx - gx) + Math.abs(sy - gy);
+        const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+
+        for (let head = 0; head < queue.length; head++) {
+            const [cx, cy] = queue[head]!;
+            if (cx === gx && cy === gy) break;
+            // remember the reachable tile closest to the goal (fallback if goal is blocked)
+            const d = Math.abs(cx - gx) + Math.abs(cy - gy);
+            if (d < bestDist) { bestDist = d; best = [cx, cy]; }
+            for (const [dx, dy] of dirs) {
+                const nx = cx + dx;
+                const ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx > this.maxTileX || ny > this.maxTileY) continue;
+                const nk = key(nx, ny);
+                if (visited.has(nk) || this.blocked.has(nk)) continue;
+                visited.add(nk);
+                prev.set(nk, key(cx, cy));
+                queue.push([nx, ny]);
+            }
         }
-        this.move(dx, dy);
+
+        const end = visited.has(goal) ? goal : key(best[0], best[1]);
+        if (end === start) return [];
+
+        // walk the prev-links back from the end to the start, then reverse
+        const path: { x: number; y: number }[] = [];
+        let cur: string | undefined = end;
+        while (cur && cur !== start) {
+            const [x, y] = cur.split(",").map(Number);
+            path.push({ x: x!, y: y! });
+            cur = prev.get(cur);
+        }
+        path.reverse();
+        return path;
     }
 
     // block every tile a furniture piece covers, so avatars can't walk through it.
@@ -782,24 +813,66 @@ export class ArenaScene extends Phaser.Scene{
         }
     }
 
-    // a horizontal run of wall tiles from x1..x2 at row y (skip = doorway tiles).
-    // every wall tile blocks movement and casts a soft shadow on the row below.
+    // Register a horizontal run of wall tiles from x1..x2 at row y (skip = doorways).
+    // Rendering happens later in drawWalls(), which joins touching segments.
     private wallRow(x1: number, x2: number, y: number, skip: number[] = []) {
         for (let x = x1; x <= x2; x++) {
             if (skip.includes(x)) continue;
-            this.add.image(x * TILE, y * TILE, "wall").setOrigin(0, 0).setDepth(y * TILE + TILE);
-            this.add.rectangle(x * TILE, (y + 1) * TILE, TILE, 5, 0x000000, 0.10)
-                .setOrigin(0, 0).setDepth(-994);
+            this.wallCells.add(x + "," + y);
             this.blocked.add(x + "," + y);
         }
     }
 
-    // a vertical run of wall tiles from y1..y2 at column x (skip = doorway tiles)
+    // Register a vertical run of wall tiles from y1..y2 at column x (skip = doorways)
     private wallCol(x: number, y1: number, y2: number, skip: number[] = []) {
         for (let y = y1; y <= y2; y++) {
             if (skip.includes(y)) continue;
-            this.add.image(x * TILE, y * TILE, "wall").setOrigin(0, 0).setDepth(y * TILE + TILE);
+            this.wallCells.add(x + "," + y);
             this.blocked.add(x + "," + y);
+        }
+    }
+
+    // Draw every wall cell as a slim Gather-style bar that EXTENDS toward each
+    // neighbouring wall cell, so straight runs, corners and T-junctions all read as
+    // one continuous line (no more floating segments that stop mid-tile).
+    private drawWalls() {
+        const T = 4;                    // bar thickness
+        const off = (TILE - T) / 2;     // centre the bar in the tile
+        const BASE = 0x8f97a6, LIT = 0xb4bcc9;
+
+        for (const cell of this.wallCells) {
+            const [x, y] = cell.split(",").map(Number) as [number, number];
+            const px = x * TILE, py = y * TILE;
+            const d = py + TILE;
+            const n = this.wallCells.has(x + "," + (y - 1));
+            const s = this.wallCells.has(x + "," + (y + 1));
+            const w = this.wallCells.has((x - 1) + "," + y);
+            const e = this.wallCells.has((x + 1) + "," + y);
+
+            const bar = (bx: number, by: number, bw: number, bh: number) => {
+                this.add.rectangle(bx, by, bw, bh, BASE).setOrigin(0, 0).setDepth(d);
+                // lit edge: top sliver for horizontal pieces, left sliver for vertical
+                this.add.rectangle(bx, by, bw > bh ? bw : 2, bw > bh ? 2 : bh, LIT)
+                    .setOrigin(0, 0).setDepth(d);
+            };
+
+            // isolated post (no neighbours) — draw a small knob
+            if (!n && !s && !w && !e) {
+                bar(px + off, py + off, T, T);
+                continue;
+            }
+            // arms run from the tile edge to the centre bar, one per neighbour;
+            // opposite neighbours merge into one full-length bar.
+            if (w || e) {
+                const bx = w ? px : px + off;
+                const bw = (w && e) ? TILE : (TILE - off);
+                bar(bx, py + off, bw, T);
+            }
+            if (n || s) {
+                const by = n ? py : py + off;
+                const bh = (n && s) ? TILE : (TILE - off);
+                bar(px + off, by, T, bh);
+            }
         }
     }
 
@@ -913,41 +986,29 @@ export class ArenaScene extends Phaser.Scene{
         return this.add.container(0, 0, [bg, text, dot]).setDepth(10000);
     }
 
-    // Each direction has its own seated idle animation (see the sit-* anims in
-    // create()). Playing the loop instead of freezing a frame keeps seated
-    // avatars alive, like Gather's subtle breathing idle.
+    // Sit using the character's own walking-sheet facing frame (16px, consistent for every
+    // chair). No separate sit sheets — those had mixed frame widths that landed the body
+    // off the cushion (worst on the "up" office chair). This is reliable across all seats.
     private setSittingPose(sprite: Phaser.GameObjects.Sprite, dir: "down" | "up" | "left" | "right") {
-        const key = "sit-" + dir;
-        if (sprite.anims.currentAnim?.key !== key || !sprite.anims.isPlaying) {
-            sprite.anims.play(key, true);
-        }
+        if (sprite.anims.isPlaying) sprite.anims.stop();
+        if (sprite.texture.key !== "adam") sprite.setTexture("adam");
+        sprite.setFrame(this.standingFrame(dir));
     }
 
     private setStandingPose(sprite: Phaser.GameObjects.Sprite) {
-        if (sprite.anims.currentAnim?.key.startsWith("sit-") && sprite.anims.isPlaying) {
-            sprite.anims.stop();
-        }
         if (sprite.texture.key !== "adam") {
             sprite.setTexture("adam", this.standingFrame(this.facing));
         }
     }
 
-    // The chair itself owns one tile. Offsets are tuned per sheet (drawn at 2x,
-    // origin 0.5/0.5) so the torso lands centred on the chair cushion:
-    //   down       sit3, 16px frame, body fills the frame        -> no x shift
-    //   up         original sit sheet, body x6..15 (+6px right)  -> pull left
-    //   left/right sit2, 32px frame, torso centred with the legs
-    //              spilling toward the facing side (under the table)
+    // Centre the seated body on the chair tile. A small upward lift plants it on the
+    // cushion; "up" (facing away) lifts a little more so the chair back — which draws
+    // over the avatar — reads correctly in front of it.
     private seatedPoint(tileX: number, tileY: number, dir: "up" | "down" | "left" | "right") {
-        const off = {
-            down:  { dx: 0,  dy: -2 },
-            up:    { dx: -6, dy: -2 },
-            left:  { dx: 0,  dy: 6 },
-            right: { dx: 0,  dy: 6 },
-        }[dir];
+        const lift = dir === "up" ? 12 : 8;
         return {
-            x: tileX * TILE + TILE / 2 + off.dx,
-            y: tileY * TILE + off.dy,
+            x: tileX * TILE + TILE / 2,
+            y: tileY * TILE + TILE / 2 - lift,
         };
     }
 

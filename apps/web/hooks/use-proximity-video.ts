@@ -36,6 +36,11 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
     startingRef.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      
+      // Apply current mic/cam state to the newly acquired stream tracks
+      stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+      stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+
       localStreamRef.current = stream;
       setLocalStream(stream);
     } catch (err) {
@@ -43,7 +48,7 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
     } finally {
       startingRef.current = false;
     }
-  }, []);
+  }, [micOn, camOn]);
 
   // build a peer connection to `peerId`. `initiator` = this side makes the offer.
   const createPeer = useCallback(
@@ -143,17 +148,25 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
 
   // 4) mic/camera toggles just enable/disable the local tracks
   const toggleMic = useCallback(() => {
-    const s = localStreamRef.current;
-    if (!s) return;
-    s.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
-    setMicOn((v) => !v);
+    setMicOn((v) => {
+      const next = !v;
+      const s = localStreamRef.current;
+      if (s) {
+        s.getAudioTracks().forEach((t) => (t.enabled = next));
+      }
+      return next;
+    });
   }, []);
 
   const toggleCam = useCallback(() => {
-    const s = localStreamRef.current;
-    if (!s) return;
-    s.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
-    setCamOn((v) => !v);
+    setCamOn((v) => {
+      const next = !v;
+      const s = localStreamRef.current;
+      if (s) {
+        s.getVideoTracks().forEach((t) => (t.enabled = next));
+      }
+      return next;
+    });
   }, []);
 
   // 5) clean everything up when you leave the space

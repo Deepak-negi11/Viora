@@ -21,7 +21,6 @@ function VideoTile({ stream, label, muted }: { stream: MediaStream; label: strin
   );
 }
 
-// Top-right stack of video tiles: your own (muted) + everyone currently near you.
 export function VideoLayer({
   localStream,
   remoteStreams,
@@ -34,12 +33,13 @@ export function VideoLayer({
   selfId: string | null;
 }) {
   const remotes = Object.entries(remoteStreams);
-  if (!localStream && remotes.length === 0) return null;
+  // Hide all video tiles (including your own) if there is no other player nearby
+  if (remotes.length === 0) return null;
 
   return (
     <div className="pointer-events-none absolute right-4 top-4 flex flex-col gap-2">
       {/* your own tile is muted so you don't hear yourself echo */}
-      {localStream && <VideoTile stream={localStream} label={selfId ? "You" : "You"} muted />}
+      {localStream && <VideoTile stream={localStream} label="You" muted />}
       {remotes.map(([id, stream]) => (
         <VideoTile key={id} stream={stream} label={names[id] ?? id.slice(0, 5)} />
       ))}

@@ -14,6 +14,7 @@ import {
   removeUser,
   setUserOnline,
   setUserPosition,
+  getUserPosition,
 } from "./presence";
 import {
   publishRoomEvent,
@@ -103,7 +104,8 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
     return send(ws, { type: "error", message: "Space not found" });
   }
 
-  const spawn = { x: 19, y: 27 }; // on the stone path outside the office entrance
+  const lastPos = await getUserPosition(payload.spaceId, userId);
+  const spawn = lastPos ? lastPos : { x: 19, y: 27 };
   ws.data.userId = userId;
   ws.data.spaceId = payload.spaceId;
   ws.data.x = spawn.x;

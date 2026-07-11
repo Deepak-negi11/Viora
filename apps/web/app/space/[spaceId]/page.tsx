@@ -25,6 +25,8 @@ export default function SpacePage() {
 
   const othersRef = useRef(others);
   othersRef.current = others;
+  const selfRef = useRef(self);
+  selfRef.current = self;
   const moveRef = useRef(move);
   moveRef.current = move;
   const reactionsRef = useRef(reactions);
@@ -97,7 +99,7 @@ export default function SpacePage() {
   bg-neutral-950 text-neutral-100">
         {status === "joined" ? (
           <>
-            <PhaserGame othersRef={othersRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
+            <PhaserGame othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
   />
             {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
             <PresenceBar people={people} />

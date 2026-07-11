@@ -8,6 +8,7 @@ import type { Others,Position,Reaction } from "../../hooks/use-space-socket";
 
 type PhaserGameProps ={
     othersRef?:RefObject<Others>;
+    selfRef?:RefObject<Position>;
     moveRef?:RefObject<(next:Position) =>void>;
     // userId -> username, so the scene can show real names on pills
     namesRef?:RefObject<Record<string,string>>;
@@ -17,7 +18,7 @@ type PhaserGameProps ={
     reactionsRef?:RefObject<Reaction[]>;
 }
 
-export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
+export function PhaserGame({othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -45,6 +46,7 @@ export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef,reactionsRef}:P
             callbacks:{
                 preBoot:(game) =>{
                     game.registry.set("othersRef" , othersRef);
+                    game.registry.set("selfRef", selfRef);
                     game.registry.set("moveRef" , moveRef);
                     game.registry.set("namesRef" , namesRef);
                     game.registry.set("nearbyRef" , nearbyRef);
@@ -60,7 +62,7 @@ export function PhaserGame({othersRef,moveRef,namesRef,nearbyRef,reactionsRef}:P
             gameRef.current = null
         };
 
-    },[othersRef, moveRef, namesRef, nearbyRef, reactionsRef]);
+    },[othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef]);
     return <div ref ={containerRef} className="h-full w-full"/>
 
 

@@ -44,7 +44,7 @@ export function ControlBar({ displayName = "You", onLeave, onReact, micOn: micPr
   return (
     // Full-width strip pinned to the bottom. pointer-events-none means clicks
     // PASS THROUGH the empty areas to the Phaser canvas (so click-to-walk still works).
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3">
+    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3 z-50">
       {/* the actual bar re-enables pointer events so its buttons are clickable */}
       <div className="pointer-events-auto flex max-w-full items-center gap-1.5 border border-[#3a4962] bg-[#111827]/95 px-2 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.34)] backdrop-blur">
         {/* your avatar chip */}
