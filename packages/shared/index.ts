@@ -1,2 +1,3 @@
-export * from "./src/auth/auth.schema.ts";
-export * from "./src/ws/ws.schema.ts";
+export * from "./src/auth/auth.schema";
+export * from "./src/maps/map-templates";
+export * from "./src/ws/ws.schema";

@@ -1,0 +1,35 @@
+FROM oven/bun:alpine AS base
+WORKDIR /usr/src/app
+
+FROM base AS install
+RUN mkdir -p /temp/dev
+COPY package.json bun.lock /temp/dev/
+COPY apps/server/package.json /temp/dev/apps/server/
+COPY apps/web/package.json /temp/dev/apps/web/
+COPY packages/db/package.json /temp/dev/packages/db/
+COPY packages/shared/package.json /temp/dev/packages/shared/
+COPY packages/ui/package.json /temp/dev/packages/ui/
+COPY packages/eslint-config/package.json /temp/dev/packages/eslint-config/
+COPY packages/typescript-config/package.json /temp/dev/packages/typescript-config/
+
+RUN cd /temp/dev && bun install --frozen-lockfile
+
+FROM base AS prerelease
+COPY --from=install /temp/dev/node_modules node_modules
+COPY . .
+
+# Build Next.js application
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+RUN cd apps/web && bun run build
+
+FROM base AS release
+COPY --from=prerelease /usr/src/app/node_modules node_modules
+COPY --from=prerelease /usr/src/app/apps/web apps/web
+COPY --from=prerelease /usr/src/app/packages/ui packages/ui
+COPY --from=prerelease /usr/src/app/package.json package.json
+
+WORKDIR /usr/src/app/apps/web
+EXPOSE 3000
+USER bun
+ENTRYPOINT [ "bun", "run", "start" ]

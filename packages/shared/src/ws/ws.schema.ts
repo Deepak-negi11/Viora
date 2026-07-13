@@ -1,10 +1,12 @@
 import * as z from "zod";
 
+//why i have created a position schema what is the even need of this
 const PositionSchema = z.object({
   x: z.number().int().nonnegative(),
   y: z.number().int().nonnegative(),
 });
 
+// why these are object tell that is thier a reason to bind then together like the type and the payload
 export const JoinMessage = z.object({
   type: z.literal("join"),
   payload: z.object({
@@ -18,6 +20,7 @@ export const MoveMessage = z.object({
   payload: PositionSchema,
 });
 
+//when do we even create these like this zod schema and what is this literal type tell me this also the like explain me this zod schema like this when does this apply and used where in this
 export const SpaceJoinedMessage = z.object({
   type: z.literal("space-joined"),
   payload: z.object({
@@ -32,6 +35,7 @@ export const SpaceJoinedMessage = z.object({
     ),
   }),
 });
+
 
 export const UserJoinMessage = z.object({
   type: z.literal("user-join"),
@@ -51,10 +55,12 @@ export const MovementMessage = z.object({
   }),
 });
 
+//when does even this happen and what to use this
 export const MovementRejectedMessage = z.object({
   type: z.literal("movement-rejected"),
   payload: z.object({ x: z.number(), y: z.number() }),
 });
+
 
 export const UserLeftMessage = z.object({
   type: z.literal("user-left"),
@@ -68,11 +74,11 @@ export const ErrorMessage = z.object({
 
 
 export const ChatBroadcastMessage = z.object({
-  type:z.literal("chat"),
-  payload:z.object({
-    userId:z.string(),
-    text:z.string(),
-    at:z.number() , 
+  type: z.literal("chat"),
+  payload: z.object({
+    userId: z.string(),
+    text: z.string(),
+    at: z.number(),
   })
 })
 
@@ -86,14 +92,14 @@ export const ReactionBroadcastMessage = z.object({
   }),
 });
 
-// a WebRTC "signal" = an SDP offer/answer, or an ICE candidate, that two peers swap
+// a WebRTC "signal" = an SDP offer/answer, or an ICE candidate, that two peers swap what isthis enum explain that to me what is this and what is this sdp
 export const RtcSignal = z.object({
   kind: z.enum(["offer", "answer", "candidate"]),
   sdp: z.string().optional(),
   candidate: z.any().optional(),
 });
 
-// browser -> server: "relay this signal to targetUserId"
+// browser -> server: "relay this signal to targetUserId" what is this even used for tell that
 export const WebRtcSignalMessage = z.object({
   type: z.literal("webrtc-signal"),
   payload: z.object({ targetUserId: z.string(), signal: RtcSignal }),
@@ -105,24 +111,24 @@ export const WebRtcSignalBroadcast = z.object({
   payload: z.object({ fromUserId: z.string(), signal: RtcSignal }),
 });
 
-//what is this server message 
+//what is this server message explain this where is thei even used for
 export const ServerMessage = z.discriminatedUnion("type", [
-    SpaceJoinedMessage,
-    UserJoinMessage,
-    MovementMessage,
-    MovementRejectedMessage,
-    UserLeftMessage,
-    ErrorMessage,
-    ChatBroadcastMessage, 
-    ReactionBroadcastMessage,
-    WebRtcSignalBroadcast,
-  ]);
+  SpaceJoinedMessage,
+  UserJoinMessage,
+  MovementMessage,
+  MovementRejectedMessage,
+  UserLeftMessage,
+  ErrorMessage,
+  ChatBroadcastMessage,
+  ReactionBroadcastMessage,
+  WebRtcSignalBroadcast,
+]);
 
 
 export const ChatMessage = z.object({
-  type:z.literal("chat"),
-  payload:z.object({
-    text:z.string().min(1).max(500)
+  type: z.literal("chat"),
+  payload: z.object({
+    text: z.string().min(1).max(500)
   })
 })
 
@@ -134,14 +140,16 @@ export const ReactionMessage = z.object({
   }),
 });
 
- export const ClientMessage = z.discriminatedUnion("type", [
-    JoinMessage,
-    MoveMessage,
-    ChatMessage, 
-    ReactionMessage,
-    WebRtcSignalMessage,
-  ]);
+//what is teh z.discrminate Union in this and explain this cleint message where is this even used for
+export const ClientMessage = z.discriminatedUnion("type", [
+  JoinMessage,
+  MoveMessage,
+  ChatMessage,
+  ReactionMessage,
+  WebRtcSignalMessage,
+]);
 
+//what is this infer like what is the use case of this lines why is this even done
 export type JoinMessage = z.infer<typeof JoinMessage>;
 export type MoveMessage = z.infer<typeof MoveMessage>;
 export type ClientMessage = z.infer<typeof ClientMessage>;

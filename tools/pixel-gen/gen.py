@@ -341,6 +341,136 @@ def arcade():
     return img
 
 
+# ---------------------------------------------------------------- coworking campus
+
+def sofa_green():
+    return _sofa(GREEN, GREEN_L, GREEN_D)
+
+
+def sofa_cream():
+    return _sofa(CREAM, CREAM_L, CREAM_D)
+
+
+def _armchair(main, light, dark):
+    img = canvas(42, 42)
+    rect(img, 5, 2, 36, 12, main)
+    rect(img, 6, 3, 35, 5, light)
+    rect(img, 1, 7, 9, 34, main)
+    rect(img, 32, 7, 40, 34, dark)
+    rect(img, 9, 13, 32, 34, dark)
+    rect(img, 10, 14, 31, 31, main)
+    rect(img, 11, 15, 30, 18, light)
+    rect(img, 8, 35, 33, 38, dark)
+    rect(img, 8, 39, 12, 41, WOOD_D)
+    rect(img, 29, 39, 33, 41, WOOD_D)
+    outline_shape(img, OUTLINE)
+    return img
+
+
+def armchair_green():
+    return _armchair(GREEN, GREEN_L, GREEN_D)
+
+
+def armchair_purple():
+    return _armchair(PURPLE, PURPLE_L, PURPLE_D)
+
+
+def task_chair_teal():
+    return _office_chair(GREEN, GREEN_L, GREEN_D)
+
+
+def team_desk():
+    img = canvas(128, 70)
+    rect(img, 2, 12, 125, 50, WOOD_PALE)
+    hline(img, 2, 125, 12, CREAM_L)
+    vline(img, 63, 13, 49, WOOD_D)
+    rect(img, 2, 51, 125, 58, WOOD)
+    rect(img, 8, 59, 13, 68, WOOD_D)
+    rect(img, 114, 59, 119, 68, WOOD_D)
+    for x in (18, 74):
+        rect(img, x, 1, x + 31, 16, SLATE)
+        rect(img, x + 3, 3, x + 28, 13, SCREEN)
+        rect(img, x + 14, 17, x + 18, 21, SLATE_D)
+        rect(img, x + 7, 27, x + 34, 32, GREY_L)
+    rect(img, 56, 22, 70, 36, WHITE)
+    hline(img, 58, 67, 26, BLUE)
+    outline_shape(img, OUTLINE)
+    return img
+
+
+def cafe_counter():
+    img = canvas(128, 64)
+    rect(img, 1, 8, 126, 19, SLATE_L)
+    hline(img, 1, 126, 8, GREY_L)
+    rect(img, 1, 20, 126, 56, SLATE)
+    for x in (8, 40, 72, 104):
+        rect(img, x, 26, x + 15, 47, SLATE_D)
+        rect(img, x + 3, 29, x + 12, 44, GREY)
+    rect(img, 14, 0, 35, 12, SLATE_D)
+    rect(img, 17, 2, 32, 9, SCREEN_D)
+    rect(img, 50, 2, 60, 11, POT)
+    rect(img, 82, 2, 91, 10, WHITE)
+    rect(img, 108, 1, 117, 11, GREEN)
+    rect(img, 4, 57, 11, 63, SLATE_D)
+    rect(img, 116, 57, 123, 63, SLATE_D)
+    outline_shape(img, OUTLINE)
+    return img
+
+
+def reception_desk():
+    img = canvas(96, 62)
+    rect(img, 2, 10, 93, 24, WOOD_PALE)
+    hline(img, 2, 93, 10, CREAM_L)
+    rect(img, 2, 25, 93, 53, WOOD)
+    rect(img, 10, 29, 85, 47, WOOD_L)
+    rect(img, 42, 0, 67, 15, SLATE)
+    rect(img, 45, 2, 64, 12, SCREEN)
+    rect(img, 52, 16, 57, 22, SLATE_D)
+    rect(img, 6, 54, 13, 61, WOOD_D)
+    rect(img, 82, 54, 89, 61, WOOD_D)
+    outline_shape(img, OUTLINE)
+    return img
+
+
+def pond():
+    img = canvas(160, 112)
+    px = img.load()
+    cx, cy = 80, 54
+    for y in range(8, 101):
+        for x in range(6, 154):
+            d = ((x - cx) / 73) ** 2 + ((y - cy) / 46) ** 2
+            if d <= 1:
+                px[x, y] = (*STONE, 255)
+            if d <= .82:
+                px[x, y] = (*WATER_D, 255)
+            if d <= .68:
+                px[x, y] = (*WATER, 255)
+    for x, y, w in ((26, 28, 28), (90, 74, 34), (55, 50, 20)):
+        hline(img, x, x + w, y, WATER_L)
+    for x, y in ((46, 42), (104, 55), (76, 78)):
+        rect(img, x, y, x + 12, y + 5, LEAF_D)
+        rect(img, x + 3, y - 2, x + 8, y + 3, LEAF)
+        dot(img, x + 7, y, RED_L)
+    for x, y in ((8, 42), (28, 8), (124, 15), (144, 62), (111, 93), (43, 96)):
+        rect(img, x, y, x + 13, y + 9, STONE_L)
+        hline(img, x + 2, x + 10, y + 1, WHITE)
+    outline_shape(img, OUTLINE)
+    return img
+
+
+def window_planter():
+    img = canvas(64, 38)
+    rect(img, 1, 18, 62, 28, POT)
+    rect(img, 1, 18, 62, 21, POT_L)
+    rect(img, 5, 29, 58, 35, POT_D)
+    for x in (7, 17, 27, 37, 47, 55):
+        rect(img, x, 7, x + 3, 18, LEAF)
+        rect(img, x - 3, 4, x + 1, 10, LEAF_L)
+        rect(img, x + 2, 1, x + 6, 9, LEAF_D)
+    outline_shape(img, OUTLINE)
+    return img
+
+
 ALL = {
     "desk-monitor": desk_monitor,
     "office-chair": office_chair,
@@ -361,6 +491,16 @@ ALL = {
     "ping-pong": ping_pong,
     "foosball": foosball,
     "arcade": arcade,
+    "sofa-green-wide": sofa_green,
+    "sofa-cream-wide": sofa_cream,
+    "armchair-green": armchair_green,
+    "armchair-purple": armchair_purple,
+    "office-chair-teal": task_chair_teal,
+    "team-desk": team_desk,
+    "cafe-counter": cafe_counter,
+    "reception-desk": reception_desk,
+    "campus-pond": pond,
+    "window-planter": window_planter,
 }
 
 if __name__ == "__main__":

@@ -51,3 +51,8 @@ CLAUDE.md
 # Raw asset source packs (license-restricted, not used at runtime; keep local)
 apps/web/public/Modern tiles_Free/
 apps/web/public/SERENE_VILLAGE_REVAMPED/
+
+
+litellm_config.yaml
+litellm_debug.log
+opencode.json

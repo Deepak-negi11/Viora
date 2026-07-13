@@ -5,8 +5,10 @@ import Phaser from "phaser";
 import { ArenaScene } from "./scenes/arena-scene";
 import type { RefObject } from "react";
 import type { Others,Position,Reaction } from "../../hooks/use-space-socket";
+import type { MapTemplateId } from "@repo/shared";
 
 type PhaserGameProps ={
+    mapTemplate?: MapTemplateId;
     othersRef?:RefObject<Others>;
     selfRef?:RefObject<Position>;
     moveRef?:RefObject<(next:Position) =>void>;
@@ -18,7 +20,7 @@ type PhaserGameProps ={
     reactionsRef?:RefObject<Reaction[]>;
 }
 
-export function PhaserGame({othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
+export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -29,7 +31,7 @@ export function PhaserGame({othersRef,selfRef,moveRef,namesRef,nearbyRef,reactio
 
     //why is this use effect used here first question do not tell me like for side effect i know that 
     useEffect(()=>{
-        if(!containerRef) return;
+        if(!containerRef.current) return;
         //what does this .cuurent means here
         if(gameRef.current) return;
 
@@ -45,6 +47,7 @@ export function PhaserGame({othersRef,selfRef,moveRef,namesRef,nearbyRef,reactio
             //what is this callback and what does this prebot with the game registry means
             callbacks:{
                 preBoot:(game) =>{
+                    game.registry.set("mapTemplate", mapTemplate);
                     game.registry.set("othersRef" , othersRef);
                     game.registry.set("selfRef", selfRef);
                     game.registry.set("moveRef" , moveRef);
@@ -62,7 +65,7 @@ export function PhaserGame({othersRef,selfRef,moveRef,namesRef,nearbyRef,reactio
             gameRef.current = null
         };
 
-    },[othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef]);
+    },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef]);
     return <div ref ={containerRef} className="h-full w-full"/>
 
 

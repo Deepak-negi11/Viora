@@ -25,3 +25,23 @@ export function signinUser(input: SigninInput) {
     body: input,
   });
 }
+
+export type UpdateProfileInput = {
+  username?: string;
+  email?: string;
+};
+
+export function updateProfile(token: string, input: UpdateProfileInput) {
+  return apiRequest<{ message: string; username?: string; email?: string }, UpdateProfileInput>("/api/v1/user/profile", {
+    method: "POST",
+    body: input,
+    token,
+  });
+}
+
+export function getUserProfile(token: string, userId: string) {
+  return apiRequest<{ avatars: Array<{ userId: string; imageUrl: string | null; username: string }> }>(`/api/v1/user/metadata/bulk?ids=[${userId}]`, {
+    method: "GET",
+    token,
+  });
+}

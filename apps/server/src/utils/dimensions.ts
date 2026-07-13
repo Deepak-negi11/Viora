@@ -3,6 +3,7 @@ export type Dimensions = {
   height: number;
 };
 
+//where we have used this pare dimension and use case like parse dimesion menas
 export function parseDimensions(value: string): Dimensions | null {
   const parts = value.split("x");
   if (parts.length !== 2) return null;

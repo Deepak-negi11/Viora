@@ -6,7 +6,8 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { TextField } from "../../components/TextField";
 import { signinUser, signupUser } from "../../lib/auth-api";
-import { saveAuthToken } from "../../lib/auth-token";
+import { getAuthToken, saveAuthToken, saveAuthEmail } from "../../lib/auth-token";
+import { useEffect } from "react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,6 +17,13 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      router.replace("/spaces");
+    }
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     //what is this .preventDefault what does this even do
@@ -33,6 +41,7 @@ export default function SignupPage() {
       await signupUser({ username, email, password });
       const { token } = await signinUser({ email, password });
       saveAuthToken(token);
+      saveAuthEmail(email);
       router.push("/spaces");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account");

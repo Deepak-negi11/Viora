@@ -1,5 +1,5 @@
 import prisma from "@repo/db";
-import { ClientMessage } from "@repo/shared";
+import { ClientMessage, getMapTemplate } from "@repo/shared";
 import { getUserIdFromToken } from "../middleware/auth";
 import type { Socket, SocketData } from "./room-manager";
 import {
@@ -24,29 +24,13 @@ import {
 
 import { sendToUser } from "./room-manager";
 
-type JoinPayload = {
-  spaceId: string;
-  token: string;
-};
+type JoinPayload = Extract<ClientMessage, { type: "join" }>["payload"];
+type MovePayload = Extract<ClientMessage, { type: "move" }>["payload"];
+type ChatPayload = Extract<ClientMessage, { type: "chat" }>["payload"];
+type ReactionPayload = Extract<ClientMessage, { type: "reaction" }>["payload"];
+type SignalPayload = Extract<ClientMessage, { type: "webrtc-signal" }>["payload"];
 
-type MovePayload = {
-  x: number;
-  y: number;
-};
-
-type ChatPayload = {
-  text:string;
-};
-type ReactionPayload = {
-  emoji: string;
-};
-
-type SignalPayload = {
-  targetUserId:string;
-  signal:unknown
-};
-
-//what is this use case of this make socket data use case and why to even write this it does what just get the values and return them still why this 
+//what is this use case of this make socket data use case and why to even write this it does what just get the values and return them still why this
 export function makeSocketData(): SocketData {
   return { x: 0, y: 0 };
 }
@@ -56,12 +40,12 @@ function send(ws: Socket, message: unknown) {
   ws.send(JSON.stringify(message));
 }
 
-//what is this from 
+//what is this from
 function isOneTileMove(from: { x: number; y: number }, to: MovePayload) {
-  //what does this math.abs and explain this math to be what is this math 
+  //what does this math.abs and explain this math to be what is this math
   return Math.abs(to.x - from.x) + Math.abs(to.y - from.y) === 1;
 }
-//in this ws:socket i think it is a connection like the web socket sonnection tell what is it if not the connection 
+//in this ws:socket i think it is a connection like the web socket sonnection tell what is it if not the connection
 export async function onMessage(ws: Socket, raw: string | Buffer) {
   let json: unknown;
 
@@ -70,7 +54,7 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
   } catch {
     return send(ws, { type: "error", message: "Invalid JSON" });
   }
-
+ // what is this client message in this
   const parsed = ClientMessage.safeParse(json);
   if (!parsed.success) {
     return send(ws, { type: "error", message: "Invalid message" });
@@ -91,6 +75,10 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
 }
 
 async function handleJoin(ws: Socket, payload: JoinPayload) {
+  if (ws.data.userId || ws.data.spaceId) {
+    return send(ws, { type: "error", message: "Already joined a space" });
+  }
+
   const userId = getUserIdFromToken(payload.token);
   if (!userId) {
     return send(ws, { type: "error", message: "Invalid token" });
@@ -104,8 +92,15 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
     return send(ws, { type: "error", message: "Space not found" });
   }
 
+  const template = getMapTemplate(space.mapTemplate);
   const lastPos = await getUserPosition(payload.spaceId, userId);
-  const spawn = lastPos ? lastPos : { x: 19, y: 27 };
+  const isRememberedPositionValid = lastPos
+    && lastPos.x >= 0
+    && lastPos.y >= 0
+    && lastPos.x < template.dimensions.width
+    && lastPos.y < template.dimensions.height;
+  const spawn = isRememberedPositionValid ? lastPos : template.spawn;
+  // what is this ws.data.user id what does this does in this
   ws.data.userId = userId;
   ws.data.spaceId = payload.spaceId;
   ws.data.x = spawn.x;
@@ -116,7 +111,7 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
 
   const roomUsers = await getRoomUsers(payload.spaceId);
   const existingUsers = roomUsers
-  //what is this doing and i havea questioni. seen a bloack ok the code hy i am not able to read and understnad that and i know this filter loop over an arrayr and fitler thorugh adn give us an arrayr 
+  //what is this doing and i havea questioni. seen a bloack ok the code hy i am not able to read and understnad that and i know this filter loop over an arrayr and fitler thorugh adn give us an arrayr
     .filter((user) => user.userId !== userId)
     .map((user) => ({
       id: user.userId,
@@ -155,7 +150,13 @@ async function handleMove(ws: Socket, payload: MovePayload) {
   }
 
   const currentPosition = { x: currentX, y: currentY };
-  if (!isOneTileMove(currentPosition, payload)) {
+  const space = await prisma.space.findUnique({ where: { id: spaceId } });
+  const template = getMapTemplate(space?.mapTemplate);
+  const isInBounds = payload.x >= 0
+    && payload.y >= 0
+    && payload.x < template.dimensions.width
+    && payload.y < template.dimensions.height;
+  if (!isInBounds || !isOneTileMove(currentPosition, payload)) {
     return send(ws, {
       type: "movement-rejected",
       payload: currentPosition,
@@ -180,9 +181,14 @@ async function handleMove(ws: Socket, payload: MovePayload) {
   await publishRoomEvent(spaceId, userId, message);
 }
 
+// what is thsi handle signal means
 async function handleSignal(ws:Socket , payload:SignalPayload){
   const {spaceId , userId} = ws.data;
-  if(!spaceId || !userId) return;
+  if (!spaceId || !userId) {
+    return send(ws, { type: "error", message: "Join a space first" });
+  }
+  if (payload.targetUserId === userId) return;
+
   sendToUser(spaceId, payload.targetUserId,{
     type:"webrtc-signal",
     payload:{fromUserId:userId , signal:payload.signal},
@@ -208,7 +214,7 @@ async function handleChat(ws:Socket , payload:ChatPayload) {
    const message = {
     type:"chat",
     payload:{userId , text, at: saved.createdAt.getTime()},
-    //what does this as const menas in this why we ahve written in this even 
+    //what does this as const menas in this why we ahve written in this even
    } as const;
 
    // send to everyone else on THIS server, then to other servers via Redis pub/sub
@@ -240,7 +246,9 @@ export async function onClose(ws: Socket) {
   const { spaceId, userId } = ws.data;
   if (!spaceId || !userId) return;
 
-  removeFromRoom(spaceId, userId);
+  const removed = removeFromRoom(spaceId, userId, ws);
+  if (!removed) return;
+
   await removeUser(spaceId, userId);
 
   const message = {

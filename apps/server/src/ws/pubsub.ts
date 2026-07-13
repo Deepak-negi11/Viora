@@ -3,6 +3,7 @@ import { redis } from "./redis";
 import { broadcast } from "./room-manager";
 
 const SERVER_ID = crypto.randomUUID();
+//explain me this full file
 
 type RoomEvent = {
   serverId: string;

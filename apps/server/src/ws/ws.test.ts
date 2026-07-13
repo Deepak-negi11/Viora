@@ -85,7 +85,7 @@ class TestSocket {
   }
 }
 
-async function setupUserAndSpace() {
+async function setupUserAndSpace(mapTemplate?: "classic-office" | "coworking-campus") {
   const email = `${crypto.randomUUID()}@test.com`;
   const password = "password123";
 
@@ -101,7 +101,7 @@ async function setupUserAndSpace() {
 
   const space = await http.post(
     "/api/v1/space",
-    { name: "WS Space", dimensions: "100x100" },
+    { name: "WS Space", dimensions: "100x100", ...(mapTemplate ? { mapTemplate } : {}) },
     { headers: { Authorization: `Bearer ${token}` } },
   );
 
@@ -131,6 +131,20 @@ describe("WebSocket", () => {
       expect(message.payload?.userId).toBeString();
       expect(typeof message.payload?.spawn).toBe("object");
       expect(Array.isArray(message.payload?.users)).toBe(true);
+
+      ws.close();
+    });
+
+    test("uses the selected template spawn point", async () => {
+      const { token, spaceId } = await setupUserAndSpace("coworking-campus");
+
+      const ws = new TestSocket(WS_URL);
+      await ws.waitForOpen();
+      ws.send({ type: "join", payload: { spaceId, token } });
+
+      const message = await ws.nextMessage();
+      expect(message.type).toBe("space-joined");
+      expect(message.payload?.spawn).toEqual({ x: 25, y: 33 });
 
       ws.close();
     });

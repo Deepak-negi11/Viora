@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metaverse-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Essential annotation for supporting WebSocket connections on Nginx Ingress
+    nginx.ingress.kubernetes.io/websocket-services: "metaverse-backend"
+spec:
+  rules:
+    - host: metaverse.yourdomain.com # Replace with your custom domain
+      http:
+        paths:
+          # Route API endpoints to the backend
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: metaverse-backend
+                port:
+                  number: 3001
+          # Route WebSocket connections to the backend
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: metaverse-backend
+                port:
+                  number: 3001
+          # Route all other web traffic to the Next.js frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: metaverse-frontend
+                port:
+                  number: 80

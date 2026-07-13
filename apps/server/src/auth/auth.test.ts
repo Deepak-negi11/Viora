@@ -7,6 +7,7 @@ const BACKEND_URL = `http://localhost:${PORT}`;
 
 let server: ReturnType<typeof startServer>;
 
+//this is the thing which will run before every test or run at only at the start
 beforeAll(() => {
   server = startServer(PORT);
 });
@@ -59,6 +60,7 @@ describe("Authentication", () => {
   describe("signup", () => {
     test("user can sign up", async () => {
       const username = `deepak-${crypto.randomUUID()}`;
+      //i have a question that i am sending  this request to a url not a route or the function so how we are chekking and by this how is hte code is test which i have written
       const res = await post("/api/v1/signup", {
         username,
         password: "password123",
@@ -78,7 +80,7 @@ describe("Authentication", () => {
       expect(first.status).toBe(200);
 
       const second = await post("/api/v1/signup", body);
-      expect(second.status).toBe(400); 
+      expect(second.status).toBe(400);
     });
 
     test("signup with short password fails", async () => {
@@ -356,6 +358,34 @@ describe("Space dashboard", () => {
     expect(res.data.spaceId).toBeString();
   });
 
+  test("creates a coworking campus with template dimensions and metadata", async () => {
+    const created = await post(
+      "/api/v1/space",
+      {
+        name: "Campus Space",
+        dimensions: "1x1",
+        mapTemplate: "coworking-campus",
+      },
+      authHeader(token),
+    );
+    expect(created.status).toBe(200);
+
+    const details = await get(`/api/v1/space/${created.data.spaceId}`, authHeader(token));
+    expect(details.status).toBe(200);
+    expect(details.data.dimensions).toBe("52x38");
+    expect(details.data.mapTemplate).toBe("coworking-campus");
+    expect(details.data.thumbnail).toBe("/assets/maps/coworking-campus.png");
+  });
+
+  test("rejects an unknown map template", async () => {
+    const res = await post(
+      "/api/v1/space",
+      { name: "Bad Template", dimensions: "44x34", mapTemplate: "moon-base" },
+      authHeader(token),
+    );
+    expect(res.status).toBe(400);
+  });
+
   test("cannot create a space without dimensions", async () => {
     const res = await post(
       "/api/v1/space",
@@ -383,6 +413,7 @@ describe("Space dashboard", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.data.spaces)).toBe(true);
     expect(res.data.spaces.length).toBeGreaterThan(0);
+    expect(res.data.spaces[0].mapTemplate).toBeString();
   });
 
   test("can delete a space", async () => {

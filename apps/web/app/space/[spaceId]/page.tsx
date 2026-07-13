@@ -8,7 +8,8 @@ import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
 import { VideoLayer } from "../../../components/game-ui/video-tile";
 import { useProximityVideo } from "../../../hooks/use-proximity-video";
-import { getUsersMetadata } from "../../../lib/space-api";
+import { getSpace, getUsersMetadata } from "../../../lib/space-api";
+import type { MapTemplateId } from "@repo/shared";
 import { getAuthToken } from "../../../lib/auth-token";
 import dynamic from "next/dynamic";
 import { isNearby } from "../../../lib/proximity";
@@ -21,6 +22,20 @@ export default function SpacePage() {
   //what is this useParam what dooes this do explain this 
   const params = useParams<{ spaceId: string }>();
   const router = useRouter();
+  const [mapTemplate, setMapTemplate] = useState<MapTemplateId | null>(null);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.replace("/signin");
+      return;
+    }
+
+    getSpace(token, params.spaceId)
+      .then((space) => setMapTemplate(space.mapTemplate))
+      .catch(() => setMapTemplate("classic-office"));
+  }, [params.spaceId, router]);
+
   const { status, error, selfId, self, others, move, messages, sendChat, reactions, sendReaction, sendSignal, registerSignalHandler } = useSpaceSocket(params.spaceId);
 
   const othersRef = useRef(others);
@@ -97,13 +112,13 @@ export default function SpacePage() {
     // relative so the ControlBar overlay can position itself over the canvas
     <div className="relative h-screen w-screen overflow-hidden
   bg-neutral-950 text-neutral-100">
-        {status === "joined" ? (
+        {status === "joined" && mapTemplate ? (
           <>
-            <PhaserGame othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
+            <PhaserGame mapTemplate={mapTemplate} othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
   />
             {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
             <PresenceBar people={people} />
-            <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} selfId={selfId} />
+            <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
             <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
             <ControlBar
               displayName={(selfId ? names[selfId] : undefined) ?? "You"}

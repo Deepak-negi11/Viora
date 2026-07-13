@@ -25,12 +25,10 @@ export function VideoLayer({
   localStream,
   remoteStreams,
   names,
-  selfId,
 }: {
   localStream: MediaStream | null;
   remoteStreams: Record<string, MediaStream>;
   names: Record<string, string>;
-  selfId: string | null;
 }) {
   const remotes = Object.entries(remoteStreams);
   // Hide all video tiles (including your own) if there is no other player nearby

@@ -9,6 +9,7 @@ import {
   handleUpdateMetadata,
   handleBulkMetadata,
   handleGetAvatars,
+  handleUpdateProfile,
 } from "./src/user/user";
 import {
   handleCreateSpace,
@@ -77,6 +78,10 @@ export function startServer(port: number) {
       // user
       "/api/v1/user/metadata": {
         POST: withCors(handleUpdateMetadata),
+        OPTIONS: handleCorsPreflight,
+      },
+      "/api/v1/user/profile": {
+        POST: withCors(handleUpdateProfile),
         OPTIONS: handleCorsPreflight,
       },
       "/api/v1/user/metadata/bulk": {

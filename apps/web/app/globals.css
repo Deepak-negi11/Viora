@@ -1,7 +1,8 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-    --background: oklch(0.98 0.003 100);
+    --background: oklch(0.985 0 0);
     --foreground: oklch(0.16 0.008 100);
     --surface: oklch(1 0 0);
     --surface-raised: oklch(0.96 0.004 100);
@@ -14,9 +15,19 @@
     --font-roboto-mono: var(--font-plex-mono);
 }
 
+.dark {
+    --background: oklch(0.12 0.005 240);
+    --foreground: oklch(0.98 0.002 240);
+    --surface: oklch(0.16 0.005 240);
+    --surface-raised: oklch(0.18 0.005 240);
+    --line: oklch(0.24 0.005 240);
+    --muted: oklch(0.55 0.005 240);
+}
+
 @theme inline {
     --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
     --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+    --font-serif: var(--font-display), Georgia, serif;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 }

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metaverse-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metaverse-backend
+  template:
+    metadata:
+      labels:
+        app: metaverse-backend
+    spec:
+      # Init Container to automatically run Prisma migrations before the API starts
+      initContainers:
+        - name: run-migrations
+          image: YOUR_CONTAINER_REGISTRY/metaverse-backend:latest # Replace with your built image
+          command: ["sh", "-c", "cd packages/db && bunx prisma db push"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: metaverse-secrets
+                  key: DATABASE_URL
+      containers:
+        - name: server
+          image: YOUR_CONTAINER_REGISTRY/metaverse-backend:latest # Replace with your built image
+          ports:
+            - containerPort: 3001
+          env:
+            - name: PORT
+              value: "3001"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: metaverse-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: metaverse-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /api/v1/avatars
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/avatars
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metaverse-backend
+spec:
+  ports:
+    - port: 3001
+      targetPort: 3001
+      name: http
+  selector:
+    app: metaverse-backend

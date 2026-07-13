@@ -59,9 +59,10 @@ model Space {
   thumbnail String?
   creatorId String
   creator   User            @relation(fields: [creatorId], references: [id])
-  mapId     String?
-  map       Map?            @relation(fields: [mapId], references: [id])
-  elements  spaceElements[]
+  mapId       String?
+  map         Map?            @relation(fields: [mapId], references: [id])
+  mapTemplate String          @default("classic-office")
+  elements    spaceElements[]
   createdAt DateTime        @default(now())
 }
 

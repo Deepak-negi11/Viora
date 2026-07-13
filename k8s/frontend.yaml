@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metaverse-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metaverse-frontend
+  template:
+    metadata:
+      labels:
+        app: metaverse-frontend
+    spec:
+      containers:
+        - name: nextjs
+          image: YOUR_CONTAINER_REGISTRY/metaverse-frontend:latest # Replace with your built image
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metaverse-frontend
+spec:
+  ports:
+    - port: 80
+      targetPort: 3000
+      name: http
+  selector:
+    app: metaverse-frontend

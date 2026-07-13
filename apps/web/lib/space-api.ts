@@ -1,3 +1,4 @@
+import type { MapTemplateId } from "@repo/shared";
 import { apiRequest } from "./api-client";
 
 export type SpaceSummary = {
@@ -5,6 +6,7 @@ export type SpaceSummary = {
   name: string;
   dimensions: string;
   thumbnail: string | null;
+  mapTemplate: MapTemplateId;
 };
 
 export type SpaceElement = {
@@ -22,12 +24,15 @@ export type SpaceElement = {
 
 export type SpaceDetails = {
   dimensions: string;
+  mapTemplate: MapTemplateId;
+  thumbnail: string | null;
   elements: SpaceElement[];
 };
 
 type CreateSpaceInput = {
   name: string;
   dimensions: string;
+  mapTemplate: MapTemplateId;
 };
 
 export function listSpaces(token: string) {

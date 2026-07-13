@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ServerMessage } from "@repo/shared";
 import { getAuthToken } from "../lib/auth-token";
 import { getSpaceMessages } from "../lib/space-api";
 
@@ -47,7 +48,18 @@ export function useSpaceSocket(spaceId: string) {
     };
 
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      let rawMessage: unknown;
+      try {
+        rawMessage = JSON.parse(event.data);
+      } catch {
+        setStatus("error");
+        setError("Server sent an invalid message");
+        return;
+      }
+
+      const parsed = ServerMessage.safeParse(rawMessage);
+      if (!parsed.success) return;
+      const message = parsed.data;
 
       switch (message.type) {
         case "space-joined": {
@@ -55,9 +67,7 @@ export function useSpaceSocket(spaceId: string) {
           setSelf(message.payload.spawn);
           setOthers(
             Object.fromEntries(
-              message.payload.users.map(
-                (u: { id: string; x: number; y: number }) => [u.id, { x: u.x, y: u.y }],
-              ),
+              message.payload.users.map((user) => [user.id, { x: user.x, y: user.y }]),
             ),
           );
           setStatus("joined");
@@ -132,7 +142,16 @@ export function useSpaceSocket(spaceId: string) {
       setError("Connection error");
     };
 
+    ws.onclose = () => {
+      if (socketRef.current === ws) {
+        setStatus((current) => current === "error" ? current : "error");
+        setError((current) => current ?? "Connection closed");
+      }
+    };
+
     return () => {
+      signalHandlerRef.current = null;
+      if (socketRef.current === ws) socketRef.current = null;
       ws.close();
     };
   }, [spaceId]);

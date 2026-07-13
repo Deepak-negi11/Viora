@@ -32,15 +32,20 @@ export function addToRoom(spaceId: string, member: Member) {
   room.set(member.userId, member);
 }
 
-export function removeFromRoom(spaceId: string, userId: string) {
+export function removeFromRoom(spaceId: string, userId: string, socket?: Socket) {
   const room = rooms.get(spaceId);
-  if (!room) return;
+  if (!room) return false;
+
+  const member = room.get(userId);
+  if (!member || (socket && member.socket !== socket)) return false;
 
   room.delete(userId);
 
   if (room.size === 0) {
     rooms.delete(spaceId);
   }
+
+  return true;
 }
 
 export function roomSize(spaceId: string) {

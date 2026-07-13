@@ -8,6 +8,15 @@ type Signal =
   | { kind: "answer"; sdp: string }
   | { kind: "candidate"; candidate: RTCIceCandidateInit };
 
+function isSignal(value: unknown): value is Signal {
+  if (!value || typeof value !== "object" || !("kind" in value)) return false;
+  const signal = value as Record<string, unknown>;
+  if (signal.kind === "offer" || signal.kind === "answer") {
+    return typeof signal.sdp === "string";
+  }
+  return signal.kind === "candidate" && !!signal.candidate && typeof signal.candidate === "object";
+}
+
 type Params = {
   selfId: string | null;
   nearbyIds: Set<string>;
@@ -102,9 +111,11 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
   // 2) handle signals coming FROM other peers
   useEffect(() => {
     registerSignalHandler(async (fromUserId, raw) => {
-      const signal = raw as Signal; // the transport is untyped; narrow to our Signal shape
+      if (!isSignal(raw)) return;
+      const signal = raw;
       let pc = peersRef.current.get(fromUserId);
 
+      try {
       if (signal.kind === "offer") {
         // someone offered: create the peer (as answerer) if needed, then answer
         if (!pc) pc = createPeer(fromUserId, false);
@@ -115,11 +126,16 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
       } else if (signal.kind === "answer") {
         if (pc) await pc.setRemoteDescription({ type: "answer", sdp: signal.sdp });
       } else if (signal.kind === "candidate") {
-        // may arrive just before remoteDescription is set; ignore that specific error
+        // It may arrive just before remoteDescription is set; the next negotiation
+        // will recover, so this specific race does not need to fail the room.
         if (pc) await pc.addIceCandidate(signal.candidate).catch(() => {});
       }
+      } catch (error) {
+        console.error("WebRTC signaling failed:", error);
+        closePeer(fromUserId);
+      }
     });
-  }, [registerSignalHandler, createPeer, sendSignal]);
+  }, [registerSignalHandler, createPeer, sendSignal, closePeer]);
 
   // 3) open/close peers as who's-near-me changes
   useEffect(() => {

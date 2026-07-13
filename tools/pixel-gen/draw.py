@@ -1,9 +1,3 @@
-"""Tiny pixel-art drawing helpers on top of Pillow.
-
-All sprites are drawn at 1x (art pixels == image pixels) and rendered
-in-game at their native size on the 32px tile grid (TILE = 32, art is
-sized in multiples of 16 so footprints land on half/whole tiles).
-"""
 import os
 from PIL import Image
 

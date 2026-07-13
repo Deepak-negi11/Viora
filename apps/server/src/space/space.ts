@@ -1,12 +1,20 @@
 import prisma from "@repo/db";
+import {
+  DEFAULT_MAP_TEMPLATE,
+  getMapTemplate,
+  isMapTemplateId,
+  type MapTemplateId,
+} from "@repo/shared";
 import { requireAuth } from "../middleware/auth";
 import { formatDimensions, parseDimensions } from "../utils/dimensions";
 import { jsonMessage } from "../utils/http";
 
+// is this even used like because i think this mithg tbe used i have some big gap in my knowledge i think like what isma thinking like this  right now is that like we are not creting a space which is prebuidl but ofr building that prebuild we might require this
 type CreateSpaceBody = {
   name?: string;
   dimensions?: string;
   mapId?: string;
+  mapTemplate?: MapTemplateId;
 };
 
 type AddElementBody = {
@@ -22,12 +30,19 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
   if (auth instanceof Response) return auth;
 
   const body = (await req.json().catch(() => null)) as CreateSpaceBody | null;
-  const { name, dimensions, mapId } = body ?? {};
+  const { name, dimensions, mapId, mapTemplate } = body ?? {};
+  const normalizedName = name?.trim();
 
-  if (!name || !dimensions) {
+  if (!normalizedName || !dimensions) {
     return jsonMessage("name and dimensions are required");
   }
 
+  if (mapTemplate !== undefined && !isMapTemplateId(mapTemplate)) {
+    return jsonMessage("Invalid map template");
+  }
+
+  const templateId = mapTemplate ?? DEFAULT_MAP_TEMPLATE;
+  const template = getMapTemplate(templateId);
   const requestedSize = parseDimensions(dimensions);
   if (!requestedSize) {
     return jsonMessage("Invalid dimension");
@@ -36,10 +51,12 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
   if (!mapId) {
     const space = await prisma.space.create({
       data: {
-        name,
-        width: requestedSize.width,
-        height: requestedSize.height,
+        name: normalizedName,
+        width: mapTemplate ? template.dimensions.width : requestedSize.width,
+        height: mapTemplate ? template.dimensions.height : requestedSize.height,
         creatorId: auth.userId,
+        mapTemplate: templateId,
+        thumbnail: mapTemplate ? template.thumbnail : null,
       },
     });
 
@@ -55,7 +72,7 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
     return jsonMessage("Map not found");
   }
 
-  // explain me this map.mapelemt full thing what is even this 
+  // explain me this map.mapelemt full thing what is even this if i try to read this like so then the map is a map which has all the elements in that map.mapelment might be a arrary in which we are using this filter to loop and then if the lement is not null then .map create a new arrayr of that elemtn
   const defaultElements = map.mapElements
     .filter((element) => element.elementId && element.x !== null && element.y !== null)
     .map((element) => ({
@@ -66,11 +83,12 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
 
   const space = await prisma.space.create({
     data: {
-      name,
+      name: normalizedName,
       width: map.width,
       height: map.height,
       creatorId: auth.userId,
       mapId: map.id,
+      mapTemplate: templateId,
       elements: {
         create: defaultElements,
       },
@@ -79,6 +97,7 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
 
   return Response.json({ spaceId: space.id });
 }
+
 
 export async function handleDeleteSpace(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
@@ -115,6 +134,7 @@ export async function handleListSpaces(req: Request): Promise<Response> {
       name: space.name,
       dimensions: formatDimensions(space),
       thumbnail: space.thumbnail,
+      mapTemplate: space.mapTemplate,
     })),
   });
 }
@@ -135,6 +155,8 @@ export async function handleGetSpace(req: Request): Promise<Response> {
 
   return Response.json({
     dimensions: formatDimensions(space),
+    mapTemplate: space.mapTemplate,
+    thumbnail: space.thumbnail,
     elements: space.elements.map((spaceElement) => ({
       id: spaceElement.id,
       element: {
@@ -166,8 +188,25 @@ export async function handleAddElement(req: Request): Promise<Response> {
     return jsonMessage("Space not found");
   }
 
-  if (x < 0 || y < 0 || x > space.width || y > space.height) {
+  if (!Number.isInteger(x) || !Number.isInteger(y)) {
+    return jsonMessage("Coordinates must be integers");
+  }
+
+  if (x < 0 || y < 0 || x >= space.width || y >= space.height) {
     return jsonMessage("Out of bounds");
+  }
+
+  if (space.creatorId !== auth.userId) {
+    return jsonMessage("Not your space", 403);
+  }
+
+  const element = await prisma.elements.findUnique({ where: { id: elementId } });
+  if (!element) {
+    return jsonMessage("Element not found");
+  }
+
+  if (x + element.width > space.width || y + element.height > space.height) {
+    return jsonMessage("Element does not fit in space");
   }
 
   await prisma.spaceElements.create({
@@ -197,8 +236,17 @@ export async function handleGetMessages(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
+  //explainme this like of the code what does this do explain these tweo line to me what are they
   const parts = new URL(req.url).pathname.split("/");
   const spaceId = parts[parts.length - 2] ?? ""; // ".../space/<id>/messages"
+
+  const space = await prisma.space.findUnique({
+    where: { id: spaceId },
+    select: { id: true },
+  });
+  if (!space) {
+    return jsonMessage("Space not found");
+  }
 
   const rows = await prisma.chatMessage.findMany({
     where: { spaceId },
