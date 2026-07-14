@@ -8,6 +8,7 @@ import { Button } from "@repo/ui/button";
 import { MAP_TEMPLATES, type MapTemplateId } from "@repo/shared";
 import { getAuthToken } from "../lib/auth-token";
 import { createSpace, type SpaceSummary } from "../lib/space-api";
+import { captureEvent } from "../lib/analytics";
 
 type CreateSpaceModalProps = {
   open: boolean;
@@ -61,6 +62,7 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
       const { spaceId } = await createSpace(token, { name, dimensions, mapTemplate });
 
       onCreated({ id: spaceId, name, dimensions, thumbnail: template.thumbnail, mapTemplate });
+      captureEvent("space_created");
       setCreatedSpaceId(spaceId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create space");

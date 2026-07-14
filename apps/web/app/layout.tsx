@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { PostHogProvider } from "../components/analytics/posthog-provider";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -75,7 +76,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} ${ibmPlexMono.variable} ${dmSerif.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <PostHogProvider>{children}</PostHogProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ServerMessage } from "@repo/shared";
 import { getAuthToken } from "../lib/auth-token";
 import { getSpaceMessages } from "../lib/space-api";
+import { captureEvent } from "../lib/analytics";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 const WS_URL = API_BASE.replace(/^http/, "ws") + "/ws";
@@ -71,6 +72,7 @@ export function useSpaceSocket(spaceId: string) {
             ),
           );
           setStatus("joined");
+          captureEvent("space_entered");
 
           // load recent chat history and merge it in front of any live messages
           const token = getAuthToken();
@@ -171,6 +173,7 @@ export function useSpaceSocket(spaceId: string) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
       ws.send(JSON.stringify({ type: "chat", payload: { text: trimmed } }));
+      captureEvent("message_sent");
 
       // optimistically show MY message right away (server only echoes to others)
       setMessage((prev) => [

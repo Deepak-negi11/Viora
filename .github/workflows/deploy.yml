@@ -53,6 +53,8 @@ jobs:
       - name: Build web
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
+          NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
         run: bun run --cwd apps/web build
 
   build:
@@ -97,6 +99,8 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ env.API_URL }}
+            NEXT_PUBLIC_POSTHOG_KEY=${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
           tags: ${{ env.REGISTRY }}/web:${{ github.sha }}
           cache-from: type=gha,scope=viora-web
           cache-to: type=gha,mode=max,scope=viora-web

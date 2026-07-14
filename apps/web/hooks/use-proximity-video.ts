@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { captureEvent } from "../lib/analytics";
 
 // the shapes two peers exchange to connect
 type Signal =
@@ -37,6 +38,7 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
 
   const localStreamRef = useRef<MediaStream | null>(null); // mirror for use inside callbacks
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const connectedPeersRef = useRef<Set<string>>(new Set());
   const startingRef = useRef(false);
 
   // 1) ask for camera + mic ONCE (this shows the browser permission prompt)
@@ -78,7 +80,13 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
       // when THEIR media arrives, store it so we can render a <video>
       pc.ontrack = (e) => {
         const [stream] = e.streams;
-        if (stream) setRemoteStreams((prev) => ({ ...prev, [peerId]: stream }));
+        if (stream) {
+          setRemoteStreams((prev) => ({ ...prev, [peerId]: stream }));
+          if (!connectedPeersRef.current.has(peerId)) {
+            connectedPeersRef.current.add(peerId);
+            captureEvent("proximity_connected");
+          }
+        }
       };
 
       // only the initiator kicks off the offer (tracks are already added above)
@@ -101,6 +109,7 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
   const closePeer = useCallback((peerId: string) => {
     peersRef.current.get(peerId)?.close();
     peersRef.current.delete(peerId);
+    connectedPeersRef.current.delete(peerId);
     setRemoteStreams((prev) => {
       const next = { ...prev };
       delete next[peerId];
