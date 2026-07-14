@@ -472,7 +472,10 @@ export class ArenaScene extends Phaser.Scene{
 
         this.playerShadow = this.add.ellipse(px, py + 26, 26, 10, 0x000000, 0.25);
 
-        this.nameTag = this.makeNameTag("You", true, false);
+        const selfId = this.registry.get("selfId");
+        const selfNameRaw = selfId ? (this.namesRef?.current?.[selfId] ?? "You") : "You";
+        const selfName = selfNameRaw.length > 20 ? selfNameRaw.slice(0, 20) + "..." : selfNameRaw;
+        this.nameTag = this.makeNameTag(selfName, true, false);
         this.nameTag.setPosition(px, py - 34);
 
         this.anims.create({key:"walk-down" , frames:this.anims.generateFrameNumbers("adam" ,{
@@ -520,10 +523,32 @@ export class ArenaScene extends Phaser.Scene{
         this.cameras.main.setBounds(0,0,worldWidth,worldHeight);
         this.cameras.main.startFollow(this.player , true ,0.1 , 0.1);
 
+        // Calculate min zoom dynamically to fit the map to screen without showing black margins
+        const getMinZoom = () => {
+            return Math.max(this.cameras.main.width / worldWidth, this.cameras.main.height / worldHeight);
+        };
+
         // ?zoom=1 in the URL shows the whole map (handy for layout debugging)
         const dbgZoom = Number(new URLSearchParams(window.location.search).get("zoom"));
-        this.cameras.main.setZoom(dbgZoom > 0 ? dbgZoom : 2);
+        const initialZoom = dbgZoom > 0 ? dbgZoom : 2;
+        this.cameras.main.setZoom(Phaser.Math.Clamp(initialZoom, getMinZoom(), 4.0));
 
+        // Trackpad and mouse scroll wheel zoom
+        this.input.on("wheel", (pointer: Phaser.Input.Pointer, gameObjects: unknown, deltaX: number, deltaY: number) => {
+            let zoom = this.cameras.main.zoom;
+            // deltaY is negative when pinching open/scrolling up, positive when pinching closed/scrolling down
+            zoom -= deltaY * 0.008;
+            zoom = Phaser.Math.Clamp(zoom, getMinZoom(), 4.0);
+            this.cameras.main.setZoom(zoom);
+        });
+
+        // Keep camera within dynamic min zoom bounds on screen resize
+        this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
+            const minZoom = Math.max(gameSize.width / worldWidth, gameSize.height / worldHeight);
+            if (this.cameras.main.zoom < minZoom) {
+                this.cameras.main.setZoom(minZoom);
+            }
+        });
     }
 
     private buildCoworkingCampus() {
@@ -681,7 +706,7 @@ export class ArenaScene extends Phaser.Scene{
         place("ref-aquarium-console", 29, 9);
         place("water-cooler", 34, 14, [[0, 0]]);
         huddle(seatFamilies.wovenTeal, "ref-table-coffee", 31, 14);
-        wallMount("window-planter", 25, 8);
+        wallMount("flower-blue", 25, 8);
 
         // Mirrored coworking neighborhoods with wide, unobstructed circulation aisles.
         for (const x of [5, 12]) {
@@ -819,10 +844,13 @@ export class ArenaScene extends Phaser.Scene{
         this.playerShadow.setAlpha(isSelfSitting ? 0.08 : 0.25);
 
         // Keep the name pill compact. Sitting is already obvious from the pose and amber dot.
-        const selfTagState = isSelfSitting ? "You:sitting" : "You:standing";
+        const selfId = this.registry.get("selfId");
+        const selfNameRaw = selfId ? (this.namesRef?.current?.[selfId] ?? "You") : "You";
+        const selfName = selfNameRaw.length > 20 ? selfNameRaw.slice(0, 20) + "..." : selfNameRaw;
+        const selfTagState = `${selfName}:${isSelfSitting ? "sitting" : "standing"}`;
         if (this.selfTagName !== selfTagState) {
             this.nameTag?.destroy();
-            this.nameTag = this.makeNameTag("You", true, isSelfSitting);
+            this.nameTag = this.makeNameTag(selfName, true, isSelfSitting);
             this.selfTagName = selfTagState;
         }
         this.nameTag.setPosition(this.player.x, this.player.y - 38);

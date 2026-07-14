@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, LogOut, User, Settings } from "lucide-react";
@@ -93,8 +94,15 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
       <header className="sticky top-0 z-40 border-b border-black/5 dark:border-white/5 bg-transparent backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="group flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1b5c40]">
-            <span className="grid h-7 w-7 place-items-center rounded-[7px] bg-[#171a18] dark:bg-white text-[10px] font-extrabold tracking-[-0.1em] text-[#d9ff6f] dark:text-black transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none" aria-hidden="true">2D</span>
-            <span className="text-sm font-semibold tracking-[-0.025em] text-[#171a18] dark:text-white">Metaverse</span>
+            <Image
+              src="/viora-mark.svg"
+              alt=""
+              width={30}
+              height={30}
+              aria-hidden="true"
+              className="transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none"
+            />
+            <span className="text-sm font-semibold tracking-[-0.025em] text-[#171a18] dark:text-white">Viora</span>
           </Link>
 
           <nav className="flex items-center gap-1.5 text-sm" aria-label="Primary navigation">

@@ -10,13 +10,13 @@ export function WorkspaceShowcase({ variant = "feature" }: WorkspaceShowcaseProp
       <div className="workspace-window">
         <div className="workspace-window-bar" aria-hidden="true">
           <span className="workspace-window-dots"><i /><i /><i /></span>
-          <span>2D Metaverse · Team HQ</span>
+          <span>Viora · Team HQ</span>
           <span className="workspace-live"><i /> Live</span>
         </div>
         <div className="workspace-screen">
           <Image
             src="/assets/product-workspace.png"
-            alt="The real 2D Metaverse office with private rooms, a meeting table, lounge, desks, and pixel avatars"
+            alt="The Viora office with private rooms, a meeting table, lounge, desks, and pixel avatars"
             width={2000}
             height={1191}
             priority={variant === "hero"}

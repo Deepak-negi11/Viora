@@ -56,3 +56,5 @@ apps/web/public/SERENE_VILLAGE_REVAMPED/
 litellm_config.yaml
 litellm_debug.log
 opencode.json
+
+k8s/README.md

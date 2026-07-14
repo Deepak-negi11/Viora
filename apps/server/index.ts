@@ -29,14 +29,21 @@ let activeServers = 0;
 type RouteHandler = (req: Request) => Response | Promise<Response>;
 
 function getCorsHeaders(origin: string | null) {
-  const activeOrigin = origin && /^https?:\/\/localhost(:\d+)?$/.test(origin)
+  const configuredOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const fallbackOrigin = configuredOrigins[0] ?? "http://localhost:3000";
+  const isLocalDevelopmentOrigin = origin && /^https?:\/\/localhost(:\d+)?$/.test(origin);
+  const activeOrigin = origin && (isLocalDevelopmentOrigin || configuredOrigins.includes(origin))
     ? origin
-    : (process.env.CORS_ORIGIN ?? "http://localhost:3000");
+    : fallbackOrigin;
 
   return {
     "Access-Control-Allow-Origin": activeOrigin,
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Vary": "Origin",
   };
 }
 
@@ -71,6 +78,9 @@ export function startServer(port: number) {
   const server = Bun.serve({
     port,
     routes: {
+      // health
+      "/health": { GET: () => Response.json({ status: "ok" }) },
+
       // auth
       "/api/v1/signup": { POST: withCors(handleSignup), OPTIONS: handleCorsPreflight },
       "/api/v1/signin": { POST: withCors(handleSignin), OPTIONS: handleCorsPreflight },

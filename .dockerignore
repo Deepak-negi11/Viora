@@ -1,0 +1,22 @@
+.git
+.github
+.next
+.turbo
+node_modules
+**/node_modules
+**/.next
+**/.turbo
+coverage
+dist
+build
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.claude
+.codex
+.agents
+.impeccable
+apps/web/public/Modern tiles_Free
+apps/web/public/SERENE_VILLAGE_REVAMPED

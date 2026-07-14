@@ -15,7 +15,7 @@ COPY packages/typescript-config/package.json /temp/dev/packages/typescript-confi
 RUN cd /temp/dev && bun install --frozen-lockfile
 
 FROM base AS prerelease
-COPY --from=install /temp/dev/node_modules node_modules
+COPY --from=install /temp/dev/ .
 COPY . .
 
 # Build Next.js application
@@ -24,6 +24,7 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 RUN cd apps/web && bun run build
 
 FROM base AS release
+ENV NODE_ENV=production
 COPY --from=prerelease /usr/src/app/node_modules node_modules
 COPY --from=prerelease /usr/src/app/apps/web apps/web
 COPY --from=prerelease /usr/src/app/packages/ui packages/ui

@@ -15,13 +15,14 @@ COPY packages/typescript-config/package.json /temp/dev/packages/typescript-confi
 RUN cd /temp/dev && bun install --frozen-lockfile
 
 FROM base AS prerelease
-COPY --from=install /temp/dev/node_modules node_modules
+COPY --from=install /temp/dev/ .
 COPY . .
 
 # Generate prisma client
 RUN cd packages/db && bunx prisma generate
 
 FROM base AS release
+ENV NODE_ENV=production
 COPY --from=prerelease /usr/src/app/node_modules node_modules
 COPY --from=prerelease /usr/src/app/apps/server apps/server
 COPY --from=prerelease /usr/src/app/packages/db packages/db

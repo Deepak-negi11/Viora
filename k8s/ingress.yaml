@@ -1,38 +1,51 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: metaverse-ingress
+  name: viora
+  namespace: viora
+  labels:
+    app.kubernetes.io/part-of: viora
   annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    # Essential annotation for supporting WebSocket connections on Nginx Ingress
-    nginx.ingress.kubernetes.io/websocket-services: "metaverse-backend"
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vioraa.tech
+        - www.vioraa.tech
+        - api.vioraa.tech
+      secretName: viora-production-tls
   rules:
-    - host: metaverse.yourdomain.com # Replace with your custom domain
+    - host: vioraa.tech
       http:
         paths:
-          # Route API endpoints to the backend
-          - path: /api/v1
-            pathType: Prefix
-            backend:
-              service:
-                name: metaverse-backend
-                port:
-                  number: 3001
-          # Route WebSocket connections to the backend
-          - path: /ws
-            pathType: Prefix
-            backend:
-              service:
-                name: metaverse-backend
-                port:
-                  number: 3001
-          # Route all other web traffic to the Next.js frontend
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: metaverse-frontend
+                name: viora-web
                 port:
-                  number: 80
+                  name: http
+    - host: www.vioraa.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: viora-web
+                port:
+                  name: http
+    - host: api.vioraa.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: viora-server
+                port:
+                  name: http

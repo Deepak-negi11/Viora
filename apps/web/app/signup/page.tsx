@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { ArrowRight } from "lucide-react";
@@ -53,8 +54,9 @@ export default function SignupPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#dbe8f8] p-4 sm:p-7">
       <div className="w-full max-w-md border-2 border-[#111827] bg-[#f8fbff] p-6 shadow-[8px_8px_0_#183a8f] sm:p-8">
-        <Link href="/" className="inline-flex items-center gap-2 font-mono text-xs font-bold tracking-[0.1em] text-[#183a8f] underline decoration-[#8da6c9] underline-offset-4 transition-colors hover:text-[#111827]">
-          ← 2D METAVERSE
+        <Link href="/" aria-label="Back to Viora home" className="inline-flex items-center gap-2 text-[#183a8f] transition-opacity hover:opacity-75">
+          <span aria-hidden="true">←</span>
+          <Image src="/viora-logo.svg" alt="Viora" width={112} height={30} className="h-7 w-auto" />
         </Link>
         <p className="mt-8 font-mono text-xs font-bold tracking-[0.1em] text-[#183a8f]">MAKE A PLACE</p>
         <h1 className="mt-2 text-4xl font-bold tracking-[-0.05em] text-[#111827]">Start your space.</h1>

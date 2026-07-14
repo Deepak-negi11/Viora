@@ -18,9 +18,10 @@ type PhaserGameProps ={
     nearbyRef?:RefObject<Set<string>>;
     // recent emoji reactions to float above avatars
     reactionsRef?:RefObject<Reaction[]>;
+    selfId?: string | null;
 }
 
-export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef}:PhaserGameProps){
+export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef,selfId}:PhaserGameProps){
     // what is his containe red and what is the use case of hte ref also 
     // explain me the use caseowhat does you mean why the phaserinside the div why ref so
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -39,10 +40,13 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
         gameRef.current = new Phaser.Game({
             type:Phaser.AUTO,
             parent:containerRef.current,
+            width: "100%",
+            height: "100%",
             backgroundColor:"#0b110d",
             pixelArt:true,
             scale:{
-                mode:Phaser.Scale.RESIZE
+                mode:Phaser.Scale.RESIZE,
+                autoCenter:Phaser.Scale.CENTER_BOTH
             },
             //what is this callback and what does this prebot with the game registry means
             callbacks:{
@@ -54,6 +58,7 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
                     game.registry.set("namesRef" , namesRef);
                     game.registry.set("nearbyRef" , nearbyRef);
                     game.registry.set("reactionsRef" , reactionsRef);
+                    game.registry.set("selfId", selfId);
                 },
             },
             
@@ -65,7 +70,15 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
             gameRef.current = null
         };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef]);
+
+    useEffect(() => {
+        if (gameRef.current) {
+            gameRef.current.registry.set("selfId", selfId);
+        }
+    }, [selfId]);
+
     return <div ref ={containerRef} className="h-full w-full"/>
 
 

@@ -20,7 +20,7 @@ export const MAP_TEMPLATES: Record<MapTemplateId, MapTemplateDefinition> = {
     description: "Private offices, meeting rooms, a lounge, café, and game corner.",
     dimensions: { width: 44, height: 34 },
     spawn: { x: 19, y: 27 },
-    thumbnail: "/assets/maps/classic-office.png",
+    thumbnail: "/assets/maps/classic-office-v2.png",
   },
   "coworking-campus": {
     id: "coworking-campus",
@@ -28,7 +28,7 @@ export const MAP_TEMPLATES: Record<MapTemplateId, MapTemplateDefinition> = {
     description: "Team desk pods, colorful lounges, meeting rooms, café, and pond courtyard.",
     dimensions: { width: 52, height: 38 },
     spawn: { x: 25, y: 33 },
-    thumbnail: "/assets/maps/coworking-campus.png",
+    thumbnail: "/assets/maps/coworking-campus-v2.png",
   },
 };
 

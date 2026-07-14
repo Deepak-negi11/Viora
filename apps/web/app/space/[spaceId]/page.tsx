@@ -9,6 +9,7 @@ import { ChatPanel } from "../../../components/game-ui/chat-panel";
 import { VideoLayer } from "../../../components/game-ui/video-tile";
 import { useProximityVideo } from "../../../hooks/use-proximity-video";
 import { getSpace, getUsersMetadata } from "../../../lib/space-api";
+import { updateProfile } from "../../../lib/auth-api";
 import type { MapTemplateId } from "@repo/shared";
 import { getAuthToken } from "../../../lib/auth-token";
 import dynamic from "next/dynamic";
@@ -98,12 +99,31 @@ export default function SpacePage() {
       });
   }, [selfId, others]);
 
+  const handleUpdateName = async (newName: string) => {
+    const token = getAuthToken();
+    if (!token || !selfId) return;
+    try {
+      await updateProfile(token, { username: newName });
+      setNames((prev) => ({ ...prev, [selfId]: newName }));
+    } catch (e) {
+      console.error("Failed to update profile name:", e);
+    }
+  };
+
   // everyone in the room (self first), for the presence bar
   const people = useMemo(() => {
     const list: { id: string; name: string; isSelf: boolean; isNearby: boolean }[] = [];
-    if (selfId) list.push({ id: selfId, name: names[selfId] ?? "You", isSelf: true, isNearby: false });
+    
+    const formatName = (name: string) => 
+      name.length > 20 ? name.slice(0, 20) + "..." : name;
+
+    if (selfId) {
+      const selfName = names[selfId] ?? "You";
+      list.push({ id: selfId, name: formatName(selfName), isSelf: true, isNearby: false });
+    }
     for (const id of Object.keys(others)) {
-      list.push({ id, name: names[id] ?? id.slice(0, 5), isSelf: false, isNearby: nearbyIds.has(id) });
+      const otherName = names[id] ?? id.slice(0, 5);
+      list.push({ id, name: formatName(otherName), isSelf: false, isNearby: nearbyIds.has(id) });
     }
     return list;
   }, [selfId, others, names, nearbyIds]);
@@ -114,7 +134,7 @@ export default function SpacePage() {
   bg-neutral-950 text-neutral-100">
         {status === "joined" && mapTemplate ? (
           <>
-            <PhaserGame mapTemplate={mapTemplate} othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef}
+            <PhaserGame mapTemplate={mapTemplate} othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef} selfId={selfId}
   />
             {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
             <PresenceBar people={people} />
@@ -128,6 +148,7 @@ export default function SpacePage() {
               camOn={camOn}
               onToggleMic={toggleMic}
               onToggleCam={toggleCam}
+              onUpdateName={handleUpdateName}
             />
           </>
         ) : (

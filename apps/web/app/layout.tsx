@@ -24,8 +24,22 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "2D Metaverse — a place for your team",
-  description: "A spatial workspace for remote teams.",
+  applicationName: "Viora",
+  title: {
+    default: "Viora — Work together. Feel present.",
+    template: "%s · Viora",
+  },
+  description: "A spatial workspace where remote teams can walk, meet, chat, and talk naturally.",
+  icons: {
+    icon: [{ url: "/viora-mark.svg", type: "image/svg+xml" }],
+    shortcut: "/viora-mark.svg",
+    apple: "/viora-mark.svg",
+  },
+  openGraph: {
+    title: "Viora — Work together. Feel present.",
+    description: "A spatial workspace where remote teams can walk, meet, chat, and talk naturally.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

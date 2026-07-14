@@ -16,58 +16,18 @@ type PresenceBarProps = {
 // It reads straight from the socket data the page already has — no extra fetch.
 // Like the control bar, it's a React overlay on top of the Phaser canvas.
 export function PresenceBar({ people }: PresenceBarProps) {
-  const MAX_SHOWN = 6;
-  const shown = people.slice(0, MAX_SHOWN);
-  const extra = people.length - shown.length;
-
   return (
     <div className="pointer-events-none absolute left-4 top-4 flex flex-col items-start gap-2">
       {/* live count */}
-      <div className="pointer-events-auto inline-flex items-center gap-2 border border-[#3a4962] bg-[#111827]/95 px-3 py-2 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto inline-flex items-center gap-1.5 bg-transparent p-0 border-none shadow-none backdrop-blur-none select-none">
         <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60 motion-reduce:animate-none" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
         </span>
-        <span className="text-sm font-semibold text-white">
-          {people.length} {people.length === 1 ? "person" : "people"} online
+        <span className="text-sm font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+          {people.length}
         </span>
       </div>
-
-      {/* avatar circles */}
-      <ul className="pointer-events-auto flex items-center gap-1.5" aria-label="People in this space">
-        {shown.map((person) => (
-          <li
-            key={person.id}
-            title={
-              person.isSelf
-                ? `${person.name} (you)`
-                : person.isNearby
-                  ? `${person.name} (nearby)`
-                  : person.name
-            }
-          >
-            <span
-              className={
-                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white shadow ring-2 " +
-                (person.isSelf
-                  ? "bg-[#183a8f] ring-[#aebeff]"
-                  : person.isNearby
-                    ? "bg-[#344563] ring-green-400"
-                    : "bg-[#344563] ring-white/20")
-              }
-            >
-              {person.name.trim().charAt(0).toUpperCase() || "?"}
-            </span>
-          </li>
-        ))}
-        {extra > 0 && (
-          <li title={`${extra} more`}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26334a] text-xs font-medium text-neutral-200 ring-2 ring-white/10">
-              +{extra}
-            </span>
-          </li>
-        )}
-      </ul>
     </div>
   );
 }
