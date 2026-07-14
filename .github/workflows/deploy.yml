@@ -75,7 +75,7 @@ jobs:
         run: doctl registry login --expiry-seconds 1800
 
       - name: Build and push server image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/server/Dockerfile
@@ -86,7 +86,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=viora-server
 
       - name: Build and push web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/web/Dockerfile
