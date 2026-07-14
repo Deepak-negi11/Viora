@@ -1,0 +1,218 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: viora-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: registry.digitalocean.com/viora-registry
+  CLUSTER_NAME: viora-production
+  NAMESPACE: viora
+  API_URL: https://api.vioraa.tech
+  WEB_URL: https://vioraa.tech
+
+jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check server types
+        run: bun run --cwd apps/server check-types
+
+      - name: Lint web
+        run: bun run --cwd apps/web lint
+
+      - name: Check web types
+        run: bun run --cwd apps/web check-types
+
+      - name: Build web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.API_URL }}
+        run: bun run --cwd apps/web build
+
+  build:
+    name: Build and push images
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DigitalOcean registry
+        run: doctl registry login --expiry-seconds 1800
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/server/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/server:${{ github.sha }}
+          cache-from: type=gha,scope=viora-server
+          cache-to: type=gha,mode=max,scope=viora-server
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ env.API_URL }}
+          tags: ${{ env.REGISTRY }}/web:${{ github.sha }}
+          cache-from: type=gha,scope=viora-web
+          cache-to: type=gha,mode=max,scope=viora-web
+
+  deploy:
+    name: Deploy to DOKS
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Connect to Kubernetes
+        run: doctl kubernetes cluster kubeconfig save "${CLUSTER_NAME}" --expiry-seconds 1200
+
+      - name: Record current images
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          old_server_image="$(
+            kubectl get deployment viora-server \
+              --namespace "${NAMESPACE}" \
+              --output jsonpath='{.spec.template.spec.containers[?(@.name=="server")].image}'
+          )"
+
+          old_web_image="$(
+            kubectl get deployment viora-web \
+              --namespace "${NAMESPACE}" \
+              --output jsonpath='{.spec.template.spec.containers[?(@.name=="web")].image}'
+          )"
+
+          echo "old_server_image=${old_server_image}" >> "${GITHUB_OUTPUT}"
+          echo "old_web_image=${old_web_image}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy release images
+        run: |
+          set -euo pipefail
+
+          kubectl set image deployment/viora-server \
+            --namespace "${NAMESPACE}" \
+            server="${REGISTRY}/server:${GITHUB_SHA}" \
+            migrate-database="${REGISTRY}/server:${GITHUB_SHA}"
+
+          kubectl set image deployment/viora-web \
+            --namespace "${NAMESPACE}" \
+            web="${REGISTRY}/web:${GITHUB_SHA}"
+
+      - name: Wait for server rollout
+        id: server_rollout
+        continue-on-error: true
+        run: kubectl rollout status deployment/viora-server --namespace "${NAMESPACE}" --timeout=10m
+
+      - name: Wait for web rollout
+        id: web_rollout
+        continue-on-error: true
+        run: kubectl rollout status deployment/viora-web --namespace "${NAMESPACE}" --timeout=10m
+
+      - name: Check API health
+        id: api_health
+        if: steps.server_rollout.outcome == 'success' && steps.web_rollout.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error "${API_URL}/health"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Check website
+        id: web_health
+        if: steps.server_rollout.outcome == 'success' && steps.web_rollout.outcome == 'success'
+        continue-on-error: true
+        run: curl --fail --silent --show-error --head "${WEB_URL}"
+
+      - name: Roll back failed release
+        if: >-
+          steps.server_rollout.outcome == 'failure' ||
+          steps.web_rollout.outcome == 'failure' ||
+          steps.api_health.outcome == 'failure' ||
+          steps.web_health.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl set image deployment/viora-server \
+            --namespace "${NAMESPACE}" \
+            server="${{ steps.current.outputs.old_server_image }}" \
+            migrate-database="${{ steps.current.outputs.old_server_image }}"
+
+          kubectl set image deployment/viora-web \
+            --namespace "${NAMESPACE}" \
+            web="${{ steps.current.outputs.old_web_image }}"
+
+          kubectl rollout status deployment/viora-server \
+            --namespace "${NAMESPACE}" \
+            --timeout=10m
+
+          kubectl rollout status deployment/viora-web \
+            --namespace "${NAMESPACE}" \
+            --timeout=10m
+
+          exit 1
+
+      - name: Show deployed resources
+        if: always()
+        run: |
+          kubectl get deployments,pods,services,ingress \
+            --namespace "${NAMESPACE}" \
+            --output wide
