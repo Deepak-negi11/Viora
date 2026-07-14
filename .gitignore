@@ -57,4 +57,4 @@ litellm_config.yaml
 litellm_debug.log
 opencode.json
 
-k8s/README.md
+k8s/README.mdPRODUCT.md
