@@ -12,9 +12,49 @@ const features = [
   { index: "04", title: "Stay in the flow", body: "Use chat, reactions, and keyboard controls without opening another meeting tool.", icon: MessageCircleMore },
 ];
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://vioraa.tech/#organization",
+      name: "Viora",
+      url: "https://vioraa.tech",
+      logo: "https://vioraa.tech/viora-mark.svg",
+      sameAs: ["https://github.com/Deepak-negi11/2D-Metaverse"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://vioraa.tech/#website",
+      name: "Viora",
+      url: "https://vioraa.tech",
+      description: "A shared 2D spatial workspace for remote teams.",
+      publisher: { "@id": "https://vioraa.tech/#organization" },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Viora",
+      url: "https://vioraa.tech",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: "A shared 2D spatial workspace where remote teams move together, talk by proximity, chat, and return to the same persistent room.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      publisher: { "@id": "https://vioraa.tech/#organization" },
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <div className={styles.page}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+      />
       <a href="#main-content" className={styles.skipLink}>Skip to content</a>
       <LandingHeader />
       <GlobalCursorAvatar />

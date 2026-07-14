@@ -23,22 +23,46 @@ const dmSerif = DM_Serif_Display({
   weight: "400",
 });
 
+const siteUrl = new URL("https://vioraa.tech");
+const siteTitle = "Viora — Work together like you're in the same room";
+const siteDescription = "A shared 2D spatial workspace where remote teams move together, talk by proximity, chat, and return to the same persistent room.";
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl,
   applicationName: "Viora",
   title: {
-    default: "Viora — Work together. Feel present.",
+    default: siteTitle,
     template: "%s · Viora",
   },
-  description: "A spatial workspace where remote teams can walk, meet, chat, and talk naturally.",
+  description: siteDescription,
+  keywords: ["spatial workspace", "remote teams", "virtual office", "2D workspace", "proximity chat", "team collaboration"],
+  authors: [{ name: "Viora", url: siteUrl }],
+  creator: "Viora",
+  publisher: "Viora",
+  category: "productivity",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [{ url: "/viora-mark.svg", type: "image/svg+xml" }],
     shortcut: "/viora-mark.svg",
     apple: "/viora-mark.svg",
   },
+  manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "Viora — Work together. Feel present.",
-    description: "A spatial workspace where remote teams can walk, meet, chat, and talk naturally.",
+    title: siteTitle,
+    description: siteDescription,
+    url: "/",
+    siteName: "Viora",
+    locale: "en_US",
     type: "website",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Viora spatial workspace for remote teams" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+    images: ["/opengraph-image"],
   },
 };
 
