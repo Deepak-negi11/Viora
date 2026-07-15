@@ -154,6 +154,7 @@ export async function handleGetSpace(req: Request): Promise<Response> {
   }
 
   return Response.json({
+    name: space.name,
     dimensions: formatDimensions(space),
     mapTemplate: space.mapTemplate,
     thumbnail: space.thumbnail,

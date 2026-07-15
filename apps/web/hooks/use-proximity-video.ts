@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { captureEvent } from "../lib/analytics";
 
-// the shapes two peers exchange to connect
 type Signal =
   | { kind: "offer"; sdp: string }
   | { kind: "answer"; sdp: string }
@@ -21,124 +20,124 @@ function isSignal(value: unknown): value is Signal {
 type Params = {
   selfId: string | null;
   nearbyIds: Set<string>;
+  localStream: MediaStream | null;
+  micOn: boolean;
+  camOn: boolean;
+  toggleMic: () => void | Promise<void>;
+  toggleCam: () => void | Promise<void>;
   sendSignal: (targetUserId: string, signal: Signal) => void;
   registerSignalHandler: (fn: (fromUserId: string, signal: unknown) => void) => void;
 };
 
-// STUN server helps peers find a network path to each other through NAT/firewalls.
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
-export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSignalHandler }: Params) {
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+export function useProximityVideo({
+  selfId,
+  nearbyIds,
+  localStream,
+  micOn,
+  camOn,
+  toggleMic,
+  toggleCam,
+  sendSignal,
+  registerSignalHandler,
+}: Params) {
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
-
-  const localStreamRef = useRef<MediaStream | null>(null); // mirror for use inside callbacks
+  const localStreamRef = useRef(localStream);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const remoteStreamRefs = useRef<Map<string, MediaStream>>(new Map());
   const connectedPeersRef = useRef<Set<string>>(new Set());
-  const startingRef = useRef(false);
 
-  // 1) ask for camera + mic ONCE (this shows the browser permission prompt)
-  const start = useCallback(async () => {
-    if (localStreamRef.current || startingRef.current) return;
-    startingRef.current = true;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      
-      // Apply current mic/cam state to the newly acquired stream tracks
-      stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
-      stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+  localStreamRef.current = localStream;
 
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-    } catch (err) {
-      console.error("Camera/mic permission denied or unavailable:", err);
-    } finally {
-      startingRef.current = false;
-    }
-  }, [micOn, camOn]);
+  const sendOffer = useCallback(
+    async (peerId: string, pc: RTCPeerConnection) => {
+      if (pc.signalingState !== "stable") return;
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendSignal(peerId, { kind: "offer", sdp: pc.localDescription!.sdp! });
+      } catch (error) {
+        console.error("WebRTC offer failed:", error);
+      }
+    },
+    [sendSignal],
+  );
 
-  // build a peer connection to `peerId`. `initiator` = this side makes the offer.
   const createPeer = useCallback(
     (peerId: string, initiator: boolean) => {
       const pc = new RTCPeerConnection(RTC_CONFIG);
       peersRef.current.set(peerId, pc);
 
-      // put MY audio/video onto the connection so the peer receives it
-      localStreamRef.current?.getTracks().forEach((track) => {
-        pc.addTrack(track, localStreamRef.current!);
-      });
+      for (const kind of ["audio", "video"] as const) {
+        const track = kind === "audio"
+          ? localStreamRef.current?.getAudioTracks()[0]
+          : localStreamRef.current?.getVideoTracks()[0];
+        const transceiver = pc.addTransceiver(kind, {
+          direction: track ? "sendrecv" : "recvonly",
+        });
+        if (track) void transceiver.sender.replaceTrack(track);
+      }
 
-      // trickle my ICE candidates to the peer as the browser discovers them
-      pc.onicecandidate = (e) => {
-        if (e.candidate) sendSignal(peerId, { kind: "candidate", candidate: e.candidate.toJSON() });
-      };
-
-      // when THEIR media arrives, store it so we can render a <video>
-      pc.ontrack = (e) => {
-        const [stream] = e.streams;
-        if (stream) {
-          setRemoteStreams((prev) => ({ ...prev, [peerId]: stream }));
-          if (!connectedPeersRef.current.has(peerId)) {
-            connectedPeersRef.current.add(peerId);
-            captureEvent("proximity_connected");
-          }
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendSignal(peerId, { kind: "candidate", candidate: event.candidate.toJSON() });
         }
       };
 
-      // only the initiator kicks off the offer (tracks are already added above)
-      if (initiator) {
-        (async () => {
-          try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal(peerId, { kind: "offer", sdp: pc.localDescription!.sdp! });
-          } catch (err) {
-            console.error("offer failed", err);
-          }
-        })();
-      }
+      pc.ontrack = (event) => {
+        let remoteStream = event.streams[0] ?? remoteStreamRefs.current.get(peerId);
+        if (!remoteStream) {
+          remoteStream = new MediaStream();
+          remoteStreamRefs.current.set(peerId, remoteStream);
+        }
+        if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+          remoteStream.addTrack(event.track);
+        }
+        setRemoteStreams((previous) => ({ ...previous, [peerId]: remoteStream }));
+        if (!connectedPeersRef.current.has(peerId)) {
+          connectedPeersRef.current.add(peerId);
+          captureEvent("proximity_connected");
+        }
+      };
+
+      if (initiator) void sendOffer(peerId, pc);
       return pc;
     },
-    [sendSignal],
+    [sendOffer, sendSignal],
   );
 
   const closePeer = useCallback((peerId: string) => {
     peersRef.current.get(peerId)?.close();
     peersRef.current.delete(peerId);
+    remoteStreamRefs.current.delete(peerId);
     connectedPeersRef.current.delete(peerId);
-    setRemoteStreams((prev) => {
-      const next = { ...prev };
+    setRemoteStreams((previous) => {
+      const next = { ...previous };
       delete next[peerId];
       return next;
     });
   }, []);
 
-  // 2) handle signals coming FROM other peers
   useEffect(() => {
     registerSignalHandler(async (fromUserId, raw) => {
       if (!isSignal(raw)) return;
-      const signal = raw;
       let pc = peersRef.current.get(fromUserId);
 
       try {
-      if (signal.kind === "offer") {
-        // someone offered: create the peer (as answerer) if needed, then answer
-        if (!pc) pc = createPeer(fromUserId, false);
-        await pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal(fromUserId, { kind: "answer", sdp: pc.localDescription!.sdp! });
-      } else if (signal.kind === "answer") {
-        if (pc) await pc.setRemoteDescription({ type: "answer", sdp: signal.sdp });
-      } else if (signal.kind === "candidate") {
-        // It may arrive just before remoteDescription is set; the next negotiation
-        // will recover, so this specific race does not need to fail the room.
-        if (pc) await pc.addIceCandidate(signal.candidate).catch(() => {});
-      }
+        if (raw.kind === "offer") {
+          if (!pc) pc = createPeer(fromUserId, false);
+          await pc.setRemoteDescription({ type: "offer", sdp: raw.sdp });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          sendSignal(fromUserId, { kind: "answer", sdp: pc.localDescription!.sdp! });
+        } else if (raw.kind === "answer") {
+          if (pc) await pc.setRemoteDescription({ type: "answer", sdp: raw.sdp });
+        } else if (pc) {
+          await pc.addIceCandidate(raw.candidate).catch(() => {});
+        }
       } catch (error) {
         console.error("WebRTC signaling failed:", error);
         closePeer(fromUserId);
@@ -146,61 +145,45 @@ export function useProximityVideo({ selfId, nearbyIds, sendSignal, registerSigna
     });
   }, [registerSignalHandler, createPeer, sendSignal, closePeer]);
 
-  // 3) open/close peers as who's-near-me changes
   useEffect(() => {
     if (!selfId) return;
 
-    // first time someone is nearby, grab the camera; the effect re-runs once we have it
-    if (nearbyIds.size > 0 && !localStreamRef.current) {
-      start();
-      return;
-    }
-    if (!localStreamRef.current) return;
-
-    // NEW nearby peers: to avoid "glare" (both offering at once), only the peer
-    // with the smaller id initiates; the other waits for the incoming offer.
     nearbyIds.forEach((peerId) => {
       if (!peersRef.current.has(peerId) && selfId < peerId) {
         createPeer(peerId, true);
       }
     });
 
-    // peers that walked away: hang up
     peersRef.current.forEach((_pc, peerId) => {
       if (!nearbyIds.has(peerId)) closePeer(peerId);
     });
-  }, [nearbyIds, selfId, localStream, start, createPeer, closePeer]);
+  }, [nearbyIds, selfId, createPeer, closePeer]);
 
-  // 4) mic/camera toggles just enable/disable the local tracks
-  const toggleMic = useCallback(() => {
-    setMicOn((v) => {
-      const next = !v;
-      const s = localStreamRef.current;
-      if (s) {
-        s.getAudioTracks().forEach((t) => (t.enabled = next));
+  useEffect(() => {
+    peersRef.current.forEach((pc, peerId) => {
+      let changed = false;
+      for (const transceiver of pc.getTransceivers()) {
+        const kind = transceiver.receiver.track.kind;
+        const track = kind === "audio"
+          ? localStream?.getAudioTracks()[0]
+          : localStream?.getVideoTracks()[0];
+        if (track && transceiver.sender.track?.id !== track.id) {
+          void transceiver.sender.replaceTrack(track);
+          transceiver.direction = "sendrecv";
+          changed = true;
+        }
       }
-      return next;
+      if (changed) void sendOffer(peerId, pc);
     });
-  }, []);
+  }, [localStream, sendOffer]);
 
-  const toggleCam = useCallback(() => {
-    setCamOn((v) => {
-      const next = !v;
-      const s = localStreamRef.current;
-      if (s) {
-        s.getVideoTracks().forEach((t) => (t.enabled = next));
-      }
-      return next;
-    });
-  }, []);
-
-  // 5) clean everything up when you leave the space
   useEffect(() => {
     const peers = peersRef.current;
+    const remoteStreamMap = remoteStreamRefs.current;
     return () => {
       peers.forEach((pc) => pc.close());
       peers.clear();
-      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      remoteStreamMap.clear();
     };
   }, []);
 

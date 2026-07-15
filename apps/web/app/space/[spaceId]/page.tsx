@@ -2,28 +2,35 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import type { MapTemplateId } from "@repo/shared";
 import { useSpaceSocket } from "../../../hooks/use-space-socket";
+import { useProximityVideo } from "../../../hooks/use-proximity-video";
+import { useLocalMedia, type LocalMediaController } from "../../../hooks/use-local-media";
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
 import { VideoLayer } from "../../../components/game-ui/video-tile";
-import { useProximityVideo } from "../../../hooks/use-proximity-video";
+import { PrejoinScreen } from "../../../components/game-ui/prejoin-screen";
 import { getSpace, getUsersMetadata } from "../../../lib/space-api";
 import { updateProfile } from "../../../lib/auth-api";
-import type { MapTemplateId } from "@repo/shared";
 import { getAuthToken } from "../../../lib/auth-token";
-import dynamic from "next/dynamic";
 import { isNearby } from "../../../lib/proximity";
-//why this when we are doing the use client then 
-const PhaserGame = dynamic(()=>
-  import("../../../components/phaser/phaser-game").then((m) => m.PhaserGame),
-  {ssr:false},
-)
+
+const PhaserGame = dynamic(
+  () => import("../../../components/phaser/phaser-game").then((module) => module.PhaserGame),
+  { ssr: false },
+);
+
 export default function SpacePage() {
-  //what is this useParam what dooes this do explain this 
   const params = useParams<{ spaceId: string }>();
   const router = useRouter();
+  const media = useLocalMedia();
   const [mapTemplate, setMapTemplate] = useState<MapTemplateId | null>(null);
+  const [spaceName, setSpaceName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasEntered, setHasEntered] = useState(false);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -32,12 +39,79 @@ export default function SpacePage() {
       return;
     }
 
+    setDisplayName(localStorage.getItem("metaverse:username")?.trim() || "Guest");
     getSpace(token, params.spaceId)
-      .then((space) => setMapTemplate(space.mapTemplate))
-      .catch(() => setMapTemplate("classic-office"));
+      .then((space) => {
+        setMapTemplate(space.mapTemplate);
+        setSpaceName(space.name);
+      })
+      .catch((error: unknown) => {
+        setLoadError(error instanceof Error ? error.message : "Could not load this space");
+      });
   }, [params.spaceId, router]);
 
-  const { status, error, selfId, self, others, move, messages, sendChat, reactions, sendReaction, sendSignal, registerSignalHandler } = useSpaceSocket(params.spaceId);
+  if (loadError || !mapTemplate) {
+    return <SpaceLoading error={loadError} />;
+  }
+
+  if (!hasEntered) {
+    return (
+      <PrejoinScreen
+        media={media}
+        spaceName={spaceName}
+        initialName={displayName}
+        onEnter={async (name) => {
+          const token = getAuthToken();
+          if (!token) throw new Error("You are not signed in.");
+          if (name !== displayName) {
+            await updateProfile(token, { username: name });
+          }
+          localStorage.setItem("metaverse:username", name);
+          setDisplayName(name);
+          setHasEntered(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <LiveSpace
+      spaceId={params.spaceId}
+      mapTemplate={mapTemplate}
+      media={media}
+      initialDisplayName={displayName}
+      onLeave={() => router.push("/spaces")}
+    />
+  );
+}
+
+function LiveSpace({
+  spaceId,
+  mapTemplate,
+  media,
+  initialDisplayName,
+  onLeave,
+}: {
+  spaceId: string;
+  mapTemplate: MapTemplateId;
+  media: LocalMediaController;
+  initialDisplayName: string;
+  onLeave: () => void;
+}) {
+  const {
+    status,
+    error,
+    selfId,
+    self,
+    others,
+    move,
+    messages,
+    sendChat,
+    reactions,
+    sendReaction,
+    sendSignal,
+    registerSignalHandler,
+  } = useSpaceSocket(spaceId);
 
   const othersRef = useRef(others);
   othersRef.current = others;
@@ -48,53 +122,51 @@ export default function SpacePage() {
   const reactionsRef = useRef(reactions);
   reactionsRef.current = reactions;
 
-  // userId -> username. We fetch names for whoever we see and hand them to Phaser.
   const [names, setNames] = useState<Record<string, string>>({});
   const namesRef = useRef(names);
   namesRef.current = names;
-  // remembers which ids we've already asked for, so movement (which changes `others`
-  // constantly) doesn't refetch the same names over and over
   const fetchedIds = useRef<Set<string>>(new Set());
 
-  //why usememo 
-  const nearbyIds = useMemo(()=>{
-    const set = new Set<string>();
-    ///explain this for loops 
-    for (const [ id ,pos] of Object.entries(others)){
-      if(isNearby(self,pos)) set.add(id);
+  const nearbyIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [id, position] of Object.entries(others)) {
+      if (isNearby(self, position)) ids.add(id);
     }
-    return set;
-  },[self ,others])
+    return ids;
+  }, [self, others]);
   const nearbyRef = useRef(nearbyIds);
   nearbyRef.current = nearbyIds;
 
-  // WebRTC proximity video: opens a camera/mic connection to each nearby user
   const { localStream, remoteStreams, micOn, camOn, toggleMic, toggleCam } = useProximityVideo({
     selfId,
     nearbyIds,
+    localStream: media.stream,
+    micOn: media.micOn,
+    camOn: media.camOn,
+    toggleMic: media.toggleMic,
+    toggleCam: media.toggleCam,
     sendSignal,
     registerSignalHandler,
   });
-  
+
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
 
-    const ids = [selfId, ...Object.keys(others)].filter((v): v is string => !!v);
+    const ids = [selfId, ...Object.keys(others)].filter((value): value is string => !!value);
     const missing = ids.filter((id) => !fetchedIds.current.has(id));
     if (missing.length === 0) return;
 
     missing.forEach((id) => fetchedIds.current.add(id));
     getUsersMetadata(token, missing)
-      .then((res) => {
-        setNames((prev) => {
-          const next = { ...prev };
-          for (const user of res.avatars) next[user.userId] = user.username;
+      .then((response) => {
+        setNames((previous) => {
+          const next = { ...previous };
+          for (const user of response.avatars) next[user.userId] = user.username;
           return next;
         });
       })
       .catch(() => {
-        // let it retry next time if the request failed
         missing.forEach((id) => fetchedIds.current.delete(id));
       });
   }, [selfId, others]);
@@ -102,63 +174,71 @@ export default function SpacePage() {
   const handleUpdateName = async (newName: string) => {
     const token = getAuthToken();
     if (!token || !selfId) return;
-    try {
-      await updateProfile(token, { username: newName });
-      setNames((prev) => ({ ...prev, [selfId]: newName }));
-    } catch (e) {
-      console.error("Failed to update profile name:", e);
-    }
+    await updateProfile(token, { username: newName });
+    setNames((previous) => ({ ...previous, [selfId]: newName }));
   };
 
-  // everyone in the room (self first), for the presence bar
   const people = useMemo(() => {
     const list: { id: string; name: string; isSelf: boolean; isNearby: boolean }[] = [];
-    
-    const formatName = (name: string) => 
-      name.length > 20 ? name.slice(0, 20) + "..." : name;
+    const formatName = (name: string) => name.length > 20 ? `${name.slice(0, 20)}...` : name;
 
     if (selfId) {
-      const selfName = names[selfId] ?? "You";
-      list.push({ id: selfId, name: formatName(selfName), isSelf: true, isNearby: false });
+      list.push({
+        id: selfId,
+        name: formatName(names[selfId] ?? initialDisplayName ?? "You"),
+        isSelf: true,
+        isNearby: false,
+      });
     }
     for (const id of Object.keys(others)) {
-      const otherName = names[id] ?? id.slice(0, 5);
-      list.push({ id, name: formatName(otherName), isSelf: false, isNearby: nearbyIds.has(id) });
+      list.push({
+        id,
+        name: formatName(names[id] ?? id.slice(0, 5)),
+        isSelf: false,
+        isNearby: nearbyIds.has(id),
+      });
     }
     return list;
-  }, [selfId, others, names, nearbyIds]);
+  }, [selfId, others, names, nearbyIds, initialDisplayName]);
+
+  if (status !== "joined") return <SpaceLoading error={error} />;
 
   return (
-    // relative so the ControlBar overlay can position itself over the canvas
-    <div className="relative h-screen w-screen overflow-hidden
-  bg-neutral-950 text-neutral-100">
-        {status === "joined" && mapTemplate ? (
-          <>
-            <PhaserGame mapTemplate={mapTemplate} othersRef={othersRef} selfRef={selfRef} moveRef={moveRef} namesRef={namesRef} nearbyRef={nearbyRef} reactionsRef={reactionsRef} selfId={selfId}
-  />
-            {/* React chrome on TOP of the Phaser canvas (Gather-style overlays) */}
-            <PresenceBar people={people} />
-            <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
-            <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
-            <ControlBar
-              displayName={(selfId ? names[selfId] : undefined) ?? "You"}
-              onLeave={() => router.push("/spaces")}
-              onReact={sendReaction}
-              micOn={micOn}
-              camOn={camOn}
-              onToggleMic={toggleMic}
-              onToggleCam={toggleCam}
-              onUpdateName={handleUpdateName}
-            />
-          </>
-        ) : (
-          <div className="grid h-full place-items-center bg-[#dbe8f8] p-6 text-[#111827]">
-            <div className="border-2 border-[#111827] bg-[#f8fbff] p-6 text-center shadow-[5px_5px_0_#183a8f]">
-              <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f]">JOINING SPACE</p>
-              <p className="mt-2 text-lg font-bold tracking-[-0.03em]">{error ?? "Connecting to the room…"}</p>
-            </div>
-          </div>
-        )}
+    <div className="relative h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-100">
+      <PhaserGame
+        mapTemplate={mapTemplate}
+        othersRef={othersRef}
+        selfRef={selfRef}
+        moveRef={moveRef}
+        namesRef={namesRef}
+        nearbyRef={nearbyRef}
+        reactionsRef={reactionsRef}
+        selfId={selfId}
+      />
+      <PresenceBar people={people} />
+      <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
+      <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
+      <ControlBar
+        displayName={(selfId ? names[selfId] : undefined) ?? "You"}
+        onLeave={onLeave}
+        onReact={sendReaction}
+        micOn={micOn}
+        camOn={camOn}
+        onToggleMic={() => void toggleMic()}
+        onToggleCam={() => void toggleCam()}
+        onUpdateName={handleUpdateName}
+      />
+    </div>
+  );
+}
+
+function SpaceLoading({ error }: { error: string | null }) {
+  return (
+    <div className="grid h-screen place-items-center bg-[#dbe8f8] p-6 text-[#111827]">
+      <div className="border-2 border-[#111827] bg-[#f8fbff] p-6 text-center shadow-[5px_5px_0_#183a8f]">
+        <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f]">JOINING SPACE</p>
+        <p className="mt-2 text-lg font-bold tracking-[-0.03em]">{error ?? "Loading your space…"}</p>
       </div>
+    </div>
   );
 }

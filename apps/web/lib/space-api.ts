@@ -23,6 +23,7 @@ export type SpaceElement = {
 };
 
 export type SpaceDetails = {
+  name: string;
   dimensions: string;
   mapTemplate: MapTemplateId;
   thumbnail: string | null;
