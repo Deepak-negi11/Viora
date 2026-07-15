@@ -136,6 +136,12 @@ export function PrejoinScreen({ media, spaceName, initialName, onEnter }: Prejoi
         </section>
 
         <section className="mx-auto w-full max-w-[360px]">
+          <h2 className="mb-1 text-xl font-semibold tracking-tight text-[#1a1a1a]">
+            Join {spaceName}
+          </h2>
+          <p className="mb-5 text-sm text-[#606060]">
+            Enter your display name to enter the space.
+          </p>
           <label htmlFor="prejoin-name" className="sr-only">Display name</label>
           <input
             id="prejoin-name"
