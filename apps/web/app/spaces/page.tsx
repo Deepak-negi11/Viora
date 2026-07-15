@@ -80,51 +80,51 @@ export default function SpacePage() {
   );
 
   return (
-    <div className="relative min-h-screen bg-background text-[#111827] dark:text-[#e1e1e6] transition-colors duration-300">
+    <div className="relative min-h-screen bg-background text-[#111827]  transition-colors duration-300">
       {/* Background dot matrix grid */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:20px_20px]" />
+      <div className="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)]  [background-size:20px_20px]" />
 
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-9 sm:px-6 lg:py-12 relative z-10">
-        <section className="border-b-2 border-[#111827] dark:border-white/20 pb-7 sm:pb-9">
+        <section className="border-b-2 border-[#111827]  pb-7 sm:pb-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-xs font-bold tracking-[0.13em] text-[#183a8f] dark:text-[#60a5fa]">YOUR TEAM SPACES</p>
-              <h1 className="mt-3 text-4xl font-bold tracking-[-0.055em] text-[#111827] dark:text-white sm:text-5xl">Pick a room. Walk in.</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#4b5a70] dark:text-[#a1a1aa] sm:text-base">
-                Every space has a purpose. Choose one to work alongside your team, or make a new place for what comes next.
+              <p className="font-mono text-xs font-bold tracking-[0.13em] text-[#183a8f] ">YOUR TEAM SPACES</p>
+              <h1 className="mt-3 text-[2.4rem] font-bold tracking-[-0.055em] text-[#111827] sm:text-[3.2rem] font-dm-sans">Find your space. Get to work.</h1>
+              <p className="mt-3 whitespace-nowrap text-sm leading-6 text-[#4b5a70] sm:text-base">
+                Every space has a purpose. Step into the one your team needs, or create a new place for what&apos;s next.
               </p>
             </div>
-            <Button variant="primary" onClick={() => setIsCreateOpen(true)} className="gap-2 rounded-sm bg-[#183a8f] dark:bg-[#3b82f6] shadow-[3px_3px_0_#111827] dark:shadow-[3px_3px_0_#000] hover:bg-[#2451b2] dark:hover:bg-[#60a5fa] text-white dark:text-black font-bold">
+            <Button variant="primary" onClick={() => setIsCreateOpen(true)} className="gap-2 rounded-sm bg-[#183a8f]  shadow-[3px_3px_0_#111827]  hover:bg-[#2451b2]  text-white  font-bold">
               <Plus size={17} strokeWidth={2.5} aria-hidden="true" />
               New space
             </Button>
           </div>
         </section>
 
-        <section className="mt-7 flex flex-col gap-4 border-2 border-[#111827] dark:border-white bg-white dark:bg-[#1a1a1f] p-3 shadow-[5px_5px_0_#111827] dark:shadow-[5px_5px_0_#fff] sm:flex-row sm:items-center sm:justify-between">
+        <section className="mt-7 flex flex-col gap-4 border-2 border-[#111827]  bg-white  p-3 shadow-[5px_5px_0_#111827]  sm:flex-row sm:items-center sm:justify-between">
           <label className="relative block w-full sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#60718c] dark:text-[#a1a1aa]" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#60718c] " aria-hidden="true" />
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Find a room"
               aria-label="Find a room"
-              className="h-11 w-full border-2 border-[#9eafc6] dark:border-[#2e2e38] bg-white dark:bg-[#1e1e24] py-2 pl-10 pr-10 text-sm text-[#111827] dark:text-[#e1e1e6] outline-none transition-colors placeholder:text-[#718198] focus:border-[#183a8f] dark:focus:border-white focus:ring-2 focus:ring-[#183a8f]/20"
+              className="h-11 w-full border-2 border-[#9eafc6]  bg-white  py-2 pl-10 pr-10 text-sm text-[#111827]  outline-none transition-colors placeholder:text-[#718198] focus:border-[#183a8f]  focus:ring-2 focus:ring-[#183a8f]/20"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center text-[#60718c] dark:text-[#a1a1aa] transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-[#111827] dark:hover:text-[#e1e1e6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#183a8f]"
+                className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center text-[#60718c]  transition-colors hover:bg-gray-100  hover:text-[#111827]  focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#183a8f]"
               >
                 <X size={16} aria-hidden="true" />
               </button>
             )}
           </label>
-          <p className="px-2 font-mono text-xs font-bold tracking-[0.08em] text-[#52627b] dark:text-[#a1a1aa]">
+          <p className="px-2 font-mono text-xs font-bold tracking-[0.08em] text-[#52627b] ">
             {status === "ready" ? `${spaces.length} ${spaces.length === 1 ? "ROOM" : "ROOMS"}` : "LOADING ROOMS"}
           </p>
         </section>
@@ -133,28 +133,28 @@ export default function SpacePage() {
           {status === "loading" && (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading spaces">
               {[0, 1, 2].map((item) => (
-                <div key={item} className="border-2 border-[#a7b5c9] dark:border-[#2e2e38] bg-white dark:bg-[#1a1a1f] p-4 shadow-[4px_4px_0_#111827] dark:shadow-[4px_4px_0_#000]">
-                  <div className="h-32 animate-pulse bg-gray-200 dark:bg-gray-800 motion-reduce:animate-none" />
-                  <div className="mt-5 h-5 w-3/5 animate-pulse bg-gray-200 dark:bg-gray-800 motion-reduce:animate-none" />
-                  <div className="mt-3 h-3 w-2/5 animate-pulse bg-gray-200 dark:bg-gray-800 motion-reduce:animate-none" />
+                <div key={item} className="border-2 border-[#a7b5c9]  bg-white  p-4 shadow-[4px_4px_0_#111827] ">
+                  <div className="h-32 animate-pulse bg-gray-200  motion-reduce:animate-none" />
+                  <div className="mt-5 h-5 w-3/5 animate-pulse bg-gray-200  motion-reduce:animate-none" />
+                  <div className="mt-3 h-3 w-2/5 animate-pulse bg-gray-200  motion-reduce:animate-none" />
                 </div>
               ))}
             </div>
           )}
 
           {status === "error" && (
-            <div className="border-2 border-[#b7483d] bg-[#fff5f3] dark:bg-[#1a1111] p-5 text-sm text-[#8b2f29] dark:text-[#f87171]">
+            <div className="border-2 border-[#b7483d] bg-[#fff5f3]  p-5 text-sm text-[#8b2f29] ">
               {error ?? "We could not load your spaces. Please refresh and try again."}
             </div>
           )}
 
           {status === "ready" && visibleSpaces.length === 0 && (
-            <div className="grid min-h-80 place-items-center border-2 border-dashed border-[#7f91aa] dark:border-[#2e2e38] bg-white dark:bg-[#1a1a1f] p-8 text-center shadow-[6px_6px_0_#111827] dark:shadow-[6px_6px_0_#000]">
+            <div className="grid min-h-80 place-items-center border-2 border-dashed border-[#7f91aa]  bg-white  p-8 text-center shadow-[6px_6px_0_#111827] ">
               <div className="max-w-md">
-                <h2 className="text-2xl font-bold tracking-[-0.04em] text-[#111827] dark:text-white">
+                <h2 className="text-2xl font-bold tracking-[-0.04em] text-[#111827] ">
                   {query ? "Nothing matches that search" : "A blank floor plan is a good start"}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-[#52627b] dark:text-[#a1a1aa]">
+                <p className="mt-2 text-sm leading-6 text-[#52627b] ">
                   {query ? "Try another name, or clear the search to see every room." : "Create a space for focus, catch-ups, or the conversations that should not need a calendar invite."}
                 </p>
               </div>
@@ -164,32 +164,32 @@ export default function SpacePage() {
           {status === "ready" && visibleSpaces.length > 0 && (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {visibleSpaces.map((space) => (
-                <article key={space.id} className="group border-2 border-[#111827] dark:border-white bg-white dark:bg-[#1a1a1f] shadow-[5px_5px_0_#111827] dark:shadow-[5px_5px_0_#fff] transition-transform duration-200 hover:-translate-y-1 motion-reduce:transition-none">
+                <article key={space.id} className="group border-2 border-[#111827]  bg-white  shadow-[5px_5px_0_#111827]  transition-transform duration-200 hover:-translate-y-1 motion-reduce:transition-none">
                   <div
-                    className="relative flex h-36 items-end overflow-hidden border-b-2 border-[#111827] dark:border-white/20 bg-gray-100 dark:bg-[#25252d] p-4"
+                    className="relative flex h-36 items-end overflow-hidden border-b-2 border-[#111827]  bg-gray-100  p-4"
                     style={{ backgroundImage: "linear-gradient(rgba(49, 67, 95, 0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(49, 67, 95, 0.16) 1px, transparent 1px)", backgroundSize: "18px 18px" }}
                   >
-                    <div className="absolute inset-x-7 bottom-0 h-16 border-x-4 border-t-4 border-[#75839a] dark:border-[#475569] bg-[#e9d7ac] dark:bg-[#b5a37a] shadow-[inset_0_0_0_3px_#f7ebce] dark:shadow-[inset_0_0_0_3px_#dcd1b5]" aria-hidden="true" />
+                    <div className="absolute inset-x-7 bottom-0 h-16 border-x-4 border-t-4 border-[#75839a]  bg-[#e9d7ac]  shadow-[inset_0_0_0_3px_#f7ebce] " aria-hidden="true" />
                     {space.thumbnail ? (
                       <Image src={space.thumbnail} alt="" fill unoptimized sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw" className="object-cover" />
                     ) : (
                       <>
-                        <span className="relative grid h-12 w-12 place-items-center bg-[#183a8f] dark:bg-[#3b82f6] text-xl font-bold text-white dark:text-black shadow-[3px_3px_0_#111827] dark:shadow-[3px_3px_0_#000]">
+                        <span className="relative grid h-12 w-12 place-items-center bg-[#183a8f]  text-xl font-bold text-white  shadow-[3px_3px_0_#111827] ">
                           {space.name.charAt(0).toUpperCase()}
                         </span>
-                        <span className="relative ml-3 border border-[#183a8f] dark:border-[#60a5fa] bg-white dark:bg-[#1a1a1f] px-2 py-1 font-mono text-[10px] font-bold tracking-[0.1em] text-[#183a8f] dark:text-[#60a5fa]">ROOM</span>
+                        <span className="relative ml-3 border border-[#183a8f]  bg-white  px-2 py-1 font-mono text-[10px] font-bold tracking-[0.1em] text-[#183a8f] ">ROOM</span>
                       </>
                     )}
                   </div>
                   <div className="flex min-h-36 flex-col p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <h2 className="truncate text-xl font-bold tracking-[-0.035em] text-[#111827] dark:text-white">{space.name}</h2>
-                        <p className="mt-1 font-mono text-xs font-bold tracking-[0.07em] text-[#667891] dark:text-[#a1a1aa]">{space.dimensions ?? "CUSTOM SIZE"}</p>
+                        <h2 className="truncate text-xl font-bold tracking-[-0.035em] text-[#111827] ">{space.name}</h2>
+                        <p className="mt-1 font-mono text-xs font-bold tracking-[0.07em] text-[#667891] ">{space.dimensions ?? "CUSTOM SIZE"}</p>
                       </div>
                     </div>
                     <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-                      <button type="button" onClick={() => handleEnter(space.id)} className="inline-flex items-center gap-1.5 font-semibold text-[#183a8f] dark:text-[#60a5fa] underline decoration-[#88a0c0] dark:decoration-[#60a5fa]/60 underline-offset-4 transition-colors hover:text-[#111827] dark:hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#183a8f]">
+                      <button type="button" onClick={() => handleEnter(space.id)} className="inline-flex items-center gap-1.5 font-semibold text-[#183a8f]  underline decoration-[#88a0c0]  underline-offset-4 transition-colors hover:text-[#111827]  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#183a8f]">
                         Enter this room
                         <ArrowUpRight size={17} aria-hidden="true" />
                       </button>
@@ -197,7 +197,7 @@ export default function SpacePage() {
                         <button
                           type="button"
                           onClick={() => handleShare(space.id)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-sm border-2 border-[#111827] dark:border-white bg-white dark:bg-[#1a1a1f] px-2.5 text-xs font-bold text-[#111827] dark:text-[#e1e1e6] shadow-[2px_2px_0_#111827] dark:shadow-[2px_2px_0_#fff] transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] dark:hover:shadow-[1px_1px_0_#fff]"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-sm border-2 border-[#111827]  bg-white  px-2.5 text-xs font-bold text-[#111827]  shadow-[2px_2px_0_#111827]  transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] "
                           title="Copy share link"
                         >
                           {copiedId === space.id ? (
@@ -212,7 +212,7 @@ export default function SpacePage() {
                             </>
                           )}
                         </button>
-                        <button type="button" onClick={() => setDeleteSpaceId(space.id)} className="inline-flex h-9 w-9 items-center justify-center border border-transparent text-[#718198] dark:text-[#a1a1aa] transition-colors hover:border-[#b7483d] hover:bg-[#fff4f2] dark:hover:bg-[#fff4f2]/10 hover:text-[#a23c33] dark:hover:text-[#f87171] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b7483d]" aria-label={`Delete ${space.name}`} title="Delete space">
+                        <button type="button" onClick={() => setDeleteSpaceId(space.id)} className="inline-flex h-9 w-9 items-center justify-center border border-transparent text-[#718198]  transition-colors hover:border-[#b7483d] hover:bg-[#fff4f2]  hover:text-[#a23c33]  focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b7483d]" aria-label={`Delete ${space.name}`} title="Delete space">
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
                       </div>

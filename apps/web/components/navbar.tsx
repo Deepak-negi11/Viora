@@ -5,14 +5,10 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, LogOut, User, Settings } from "lucide-react";
-import { ModeToggle } from "./dark-mode";
 import { getAuthToken, removeAuthToken, getAuthEmail, removeAuthEmail } from "../lib/auth-token";
 import { EditProfileModal } from "./edit-profile-modal";
 import { getUserProfile } from "../lib/auth-api";
 
-type NavbarProps = {
-  showThemeToggle?: boolean;
-};
 
 function parseJwt(token: string) {
   try {
@@ -31,7 +27,7 @@ function parseJwt(token: string) {
   }
 }
 
-export function Navbar({ showThemeToggle = true }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -91,9 +87,9 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-black/5 dark:border-white/5 bg-transparent backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-black/5  bg-transparent backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" className="group flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1b5c40]">
+          <Link href="/" className="group flex shrink-0 items-center gap-1.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1b5c40]">
             <Image
               src="/viora-mark.svg"
               alt=""
@@ -102,19 +98,19 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
               aria-hidden="true"
               className="transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none"
             />
-            <span className="text-sm font-semibold tracking-[-0.025em] text-[#171a18] dark:text-white">Viora</span>
+            <span className="text-[21px] font-semibold tracking-[-0.025em] text-[#171a18] ">Viora</span>
           </Link>
 
           <nav className="flex items-center gap-1.5 text-sm" aria-label="Primary navigation">
             {/* If on Auth pages, show clean toggle link */}
             {isSignIn && (
-              <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-sm border-2 border-[#111827] dark:border-white bg-[#171a18] dark:bg-white px-3 py-1.5 font-bold text-white dark:text-black shadow-[2px_2px_0_#111827] dark:shadow-[2px_2px_0_#fff] transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] dark:hover:shadow-[1px_1px_0_#fff]">
+              <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-sm border-2 border-[#111827]  bg-[#171a18]  px-3 py-1.5 font-bold text-white  shadow-[2px_2px_0_#111827]  transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] ">
                 Get started
                 <ArrowUpRight size={15} aria-hidden="true" />
               </Link>
             )}
             {isSignUp && (
-              <Link href="/signin" className="rounded-md px-3 py-2 font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white">
+              <Link href="/signin" className="rounded-md px-3 py-2 font-medium text-gray-700  transition-colors hover:bg-black/5  hover:text-black ">
                 Sign in
               </Link>
             )}
@@ -129,7 +125,7 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
                       <button
                         type="button"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-colors focus:outline-none"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700  hover:bg-black/5  hover:text-black  transition-colors focus:outline-none"
                         aria-label="Account Settings"
                       >
                         <User size={22} className="stroke-[1.75]" />
@@ -137,7 +133,7 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
 
                       {/* Account Dropdown Card */}
                       {isDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-72 bg-[#2d2d2d] dark:bg-[#1f1f1f] border border-neutral-700/60 dark:border-neutral-800 rounded-2xl p-4 shadow-xl z-50 text-white animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="absolute right-0 top-full mt-2 w-72 bg-[#2d2d2d]  border border-neutral-700/60  rounded-2xl p-4 shadow-xl z-50 text-white animate-in fade-in slide-in-from-top-1 duration-150">
                           <div className="px-1 pb-3 mb-2 border-b border-neutral-700/50">
                             <p className="text-sm font-bold truncate text-[#e1e1e6]">
                               {username || "User Account"}
@@ -175,13 +171,13 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
                   </div>
                 ) : (
                   <>
-                    <a href="#how-it-works" className="hidden rounded-md px-3 py-2 font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white sm:inline-flex">
+                    <a href="#how-it-works" className="hidden rounded-md px-3 py-2 font-medium text-gray-600  transition-colors hover:bg-black/5  hover:text-black  sm:inline-flex">
                       How it works
                     </a>
-                    <Link href="/signin" className="rounded-md px-3 py-2 font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white">
+                    <Link href="/signin" className="rounded-md px-3 py-2 font-medium text-gray-600  transition-colors hover:bg-black/5  hover:text-black ">
                       Sign in
                     </Link>
-                    <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-sm border-2 border-[#111827] dark:border-white bg-[#171a18] dark:bg-white px-3 py-1.5 font-bold text-white dark:text-black shadow-[2px_2px_0_#111827] dark:shadow-[2px_2px_0_#fff] transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] dark:hover:shadow-[1px_1px_0_#fff]">
+                    <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-sm border-2 border-[#111827]  bg-[#171a18]  px-3 py-1.5 font-bold text-white  shadow-[2px_2px_0_#111827]  transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] ">
                       Get started
                       <ArrowUpRight size={15} aria-hidden="true" />
                     </Link>
@@ -189,7 +185,6 @@ export function Navbar({ showThemeToggle = true }: NavbarProps) {
                 )}
               </>
             )}
-            {showThemeToggle && <span className="hidden sm:inline-flex ml-1"><ModeToggle /></span>}
           </nav>
         </div>
       </header>

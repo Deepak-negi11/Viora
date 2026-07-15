@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, IBM_Plex_Mono, Manrope } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { DM_Serif_Display, IBM_Plex_Mono, Manrope, DM_Sans } from "next/font/google";
 import { PostHogProvider } from "../components/analytics/posthog-provider";
 import "./globals.css";
 
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans-google",
   display: "swap",
 });
 
@@ -73,11 +78,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${ibmPlexMono.variable} ${dmSerif.variable}`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <PostHogProvider>{children}</PostHogProvider>
-        </ThemeProvider>
+    <html lang="en">
+      <body className={`${manrope.variable} ${ibmPlexMono.variable} ${dmSerif.variable} ${dmSans.variable}`}>
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );

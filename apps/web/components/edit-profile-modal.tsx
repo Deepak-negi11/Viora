@@ -79,22 +79,22 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-profile-title"
-        className="w-full max-w-md border-2 border-[#111827] dark:border-white bg-[#f8fbff] dark:bg-[#1a1a1f] p-5 shadow-[8px_8px_0_#183a8f] dark:shadow-[8px_8px_0_#000] sm:p-7 text-[#111827] dark:text-[#e1e1e6]"
+        className="w-full max-w-md border-2 border-[#111827]  bg-[#f8fbff]  p-5 shadow-[8px_8px_0_#183a8f]  sm:p-7 text-[#111827] "
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between border-b-2 border-[#111827] dark:border-white/20 pb-4">
+        <div className="flex items-start justify-between border-b-2 border-[#111827]  pb-4">
           <div>
-            <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f] dark:text-[#60a5fa]">ACCOUNT SETTINGS</p>
+            <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f] ">ACCOUNT SETTINGS</p>
             <h2 id="edit-profile-title" className="mt-2 text-2xl font-bold tracking-[-0.04em]">Edit Profile</h2>
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#5e708a] dark:text-[#a1a1aa] transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 rounded-sm" aria-label="Close dialog">
+          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#5e708a]  transition-colors hover:bg-gray-100  rounded-sm" aria-label="Close dialog">
             <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="edit-username" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866] dark:text-gray-400">
+            <label htmlFor="edit-username" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866] ">
               USERNAME / NAME
             </label>
             <input
@@ -104,12 +104,12 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              className="h-11 border-2 border-[#9eafc6] dark:border-[#2e2e38] bg-white dark:bg-[#1e1e24] px-3 text-sm text-[#111827] dark:text-white outline-none focus:border-[#183a8f] dark:focus:border-white transition-colors"
+              className="h-11 border-2 border-[#9eafc6]  bg-white  px-3 text-sm text-[#111827]  outline-none focus:border-[#183a8f]  transition-colors"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="edit-email" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866] dark:text-gray-400">
+            <label htmlFor="edit-email" className="font-mono text-xs font-bold tracking-[0.08em] text-[#344866] ">
               EMAIL ADDRESS
             </label>
             <input
@@ -119,18 +119,18 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email"
-              className="h-11 border-2 border-[#9eafc6] dark:border-[#2e2e38] bg-white dark:bg-[#1e1e24] px-3 text-sm text-[#111827] dark:text-white outline-none focus:border-[#183a8f] dark:focus:border-white transition-colors"
+              className="h-11 border-2 border-[#9eafc6]  bg-white  px-3 text-sm text-[#111827]  outline-none focus:border-[#183a8f]  transition-colors"
             />
           </div>
 
           {error && (
-            <p className="border border-[#b7483d] bg-[#fff5f3] dark:bg-[#1a1111] px-3 py-2 text-xs text-[#8b2f29] dark:text-[#f87171] font-semibold">
+            <p className="border border-[#b7483d] bg-[#fff5f3]  px-3 py-2 text-xs text-[#8b2f29]  font-semibold">
               {error}
             </p>
           )}
 
           {success && (
-            <p className="flex items-center gap-1.5 border border-[#1aa385] bg-[#f0fdfa] dark:bg-[#111a18] px-3 py-2 text-xs text-[#1aa385] font-semibold">
+            <p className="flex items-center gap-1.5 border border-[#1aa385] bg-[#f0fdfa]  px-3 py-2 text-xs text-[#1aa385] font-semibold">
               <Check size={14} />
               Profile updated successfully!
             </p>
@@ -142,7 +142,7 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="h-10 rounded-sm border border-[#9eafc6] bg-white dark:bg-[#1a1a1f] px-4 text-sm font-semibold text-[#4b5a70] dark:text-[#a1a1aa] transition hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="h-10 rounded-sm border border-[#9eafc6] bg-white  px-4 text-sm font-semibold text-[#4b5a70]  transition hover:bg-gray-50 "
             >
               Cancel
             </Button>
@@ -150,7 +150,7 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
               variant="primary"
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex h-10 items-center justify-center rounded-sm bg-[#183a8f] dark:bg-[#3b82f6] px-5 text-sm font-bold text-white dark:text-black shadow-[3px_3px_0_#111827] dark:shadow-[3px_3px_0_#000] transition hover:translate-x-px hover:translate-y-px hover:bg-[#2451b2] dark:hover:bg-[#60a5fa] disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-sm bg-[#183a8f]  px-5 text-sm font-bold text-white  shadow-[3px_3px_0_#111827]  transition hover:translate-x-px hover:translate-y-px hover:bg-[#2451b2]  disabled:opacity-50"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
