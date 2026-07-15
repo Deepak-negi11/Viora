@@ -97,7 +97,13 @@ export function InteractiveHowItWorks() {
               <i className={styles.ringOne} /><i className={styles.ringTwo} />
               <span className={styles.demoPersonOne}><MousePointer2 size={14} /></span>
               <span className={styles.demoPersonTwo} />
-              <b>Proximity chat active</b>
+              <span className={styles.personLabelOne}>You</span>
+              <span className={styles.personLabelTwo}>Teammate</span>
+              <span className={styles.voiceWaves}><i /><i /><i /></span>
+              <span className={styles.proximityStatus}>
+                <i />
+                <span><strong>Voice connected</strong><small>In proximity range</small></span>
+              </span>
             </div>
           )}
         </div>

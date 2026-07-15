@@ -93,13 +93,29 @@
 .shareDemo { display: flex; width: min(30rem,85%); align-items: center; gap: .7rem; }
 .shareDemo span { flex: 1; overflow: hidden; border: 1px solid #cbd5e2; background: #fff; padding: .9rem; color: #64748b; font-family: var(--font-plex-mono), monospace; font-size: .68rem; white-space: nowrap; }
 .shareDemo b { display: inline-flex; min-height: 2.9rem; align-items: center; gap: .4rem; background: var(--blue); padding: .7rem 1rem; color: #fff; font-size: .7rem; }
-.meetDemo { position: relative; width: 16rem; height: 16rem; }
-.ringOne,.ringTwo { position: absolute; inset: 1rem; border: 1px solid rgba(36,88,214,.25); border-radius: 50%; }
-.ringTwo { inset: 3.2rem; background: rgba(36,88,214,.05); }
-.demoPersonOne,.demoPersonTwo { position: absolute; top: 6.2rem; width: 2rem; height: 2.7rem; border-radius: .8rem .8rem .35rem .35rem; background: var(--blue); box-shadow: 0 5px 0 #183b96; }
-.demoPersonOne { left: 4.3rem; display: grid; place-items: center; color: #fff; }
-.demoPersonTwo { right: 4.3rem; background: #20a6bf; box-shadow: 0 5px 0 #117286; }
-.meetDemo b { position: absolute; right: 50%; bottom: .5rem; display: inline-flex; min-height: 2.25rem; transform: translateX(50%); align-items: center; border-radius: 999px; background: var(--cta-blue); padding: .55rem .9rem; color: #fff; font-size: .68rem; font-weight: 750; white-space: nowrap; box-shadow: 0 8px 20px rgba(10,90,145,.2); }
+.meetDemo { position: relative; width: 17rem; height: 16rem; }
+.ringOne,.ringTwo { position: absolute; border-radius: 50%; }
+.ringOne { inset: 2rem 2.5rem; border: 1px dashed color-mix(in srgb,var(--cta-blue) 38%,transparent); animation: proximityPulse 2.8s ease-in-out infinite; }
+.ringTwo { inset: 4.1rem 4.6rem; border: 1px solid color-mix(in srgb,var(--cta-blue) 42%,transparent); background: color-mix(in srgb,var(--cta-blue) 7%,transparent); }
+.demoPersonOne,.demoPersonTwo { position: absolute; z-index: 2; top: 5.55rem; width: 2rem; height: 4rem; background-repeat: no-repeat; background-position: left center; background-size: auto 100%; image-rendering: pixelated; filter: drop-shadow(0 5px 2px rgba(16,35,59,.18)); }
+.demoPersonOne { left: 4.8rem; background-image: url('/assets/adam-idle.png'); color: #fff; }
+.demoPersonOne svg { position: absolute; right: -.3rem; bottom: .5rem; filter: drop-shadow(0 1px 1px rgba(16,35,59,.5)); }
+.demoPersonTwo { right: 4.8rem; background-image: url('/assets/amelia-run.png'); }
+.personLabelOne,.personLabelTwo { position: absolute; z-index: 3; top: 9.75rem; color: #526174; font-family: var(--font-plex-mono),monospace; font-size: .6rem; font-weight: 600; }
+.personLabelOne { left: 5.05rem; }
+.personLabelTwo { right: 4.15rem; }
+.voiceWaves { position: absolute; z-index: 3; top: 6.85rem; left: 50%; display: flex; height: 1.5rem; transform: translateX(-50%); align-items: center; gap: .18rem; }
+.voiceWaves i { width: 2px; border-radius: 999px; background: var(--cta-blue); animation: voiceWave .9s ease-in-out infinite alternate; }
+.voiceWaves i:nth-child(1) { height: .45rem; }
+.voiceWaves i:nth-child(2) { height: 1rem; animation-delay: -.3s; }
+.voiceWaves i:nth-child(3) { height: .65rem; animation-delay: -.6s; }
+.proximityStatus { position: absolute; z-index: 4; right: -.8rem; bottom: -.2rem; display: flex; min-width: 10.5rem; align-items: center; gap: .65rem; border: 1px solid rgba(36,88,214,.16); border-radius: .7rem; background: rgba(255,255,255,.94); padding: .65rem .8rem; color: #10233b; box-shadow: 0 10px 28px rgba(25,48,79,.12); backdrop-filter: blur(10px); }
+.proximityStatus > i { width: .55rem; height: .55rem; flex: 0 0 auto; border-radius: 50%; background: var(--cta-blue); box-shadow: 0 0 0 4px color-mix(in srgb,var(--cta-blue) 14%,transparent); }
+.proximityStatus > span { display: flex; flex-direction: column; gap: .12rem; }
+.proximityStatus strong { font-size: .7rem; line-height: 1.2; }
+.proximityStatus small { color: #68778a; font-size: .58rem; line-height: 1.2; }
+@keyframes proximityPulse { 50% { transform: scale(1.035); opacity: .58; } }
+@keyframes voiceWave { to { height: .35rem; opacity: .58; } }
 
 .featureSection { padding-top: 5rem; }
 .featureIntro { display: grid; margin-bottom: 3rem; grid-template-columns: 3rem 3rem minmax(13rem,.6fr) 1fr; gap: 1rem; }
@@ -180,4 +196,5 @@
 @media (prefers-reduced-motion: reduce) {
   .header,.headerCta,.primaryCta,.secondaryCta svg,.stepTabs button::after,.featureRows article::before,.featureRows article > svg { transition: none; }
   .globalAvatar { display: none; }
+  .ringOne,.voiceWaves i { animation: none; }
 }
