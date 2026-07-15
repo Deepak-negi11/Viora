@@ -22,6 +22,7 @@
     }, [router]);
 
     return (
+      //what is this property overflow-hidden what does it do and when to use it 
       <div className="h-screen w-screen overflow-hidden bg-neutral-950">
         <PhaserGame />
       </div>

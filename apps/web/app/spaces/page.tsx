@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowUpRight, Boxes, Plus, Search, Share2, Check, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Plus, Search, Share2, Check, Trash2, X } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { Navbar } from "../../components/navbar";
 import { CreateSpaceModal } from "../../components/create-space-modal";
@@ -151,21 +151,12 @@ export default function SpacePage() {
           {status === "ready" && visibleSpaces.length === 0 && (
             <div className="grid min-h-80 place-items-center border-2 border-dashed border-[#7f91aa] dark:border-[#2e2e38] bg-white dark:bg-[#1a1a1f] p-8 text-center shadow-[6px_6px_0_#111827] dark:shadow-[6px_6px_0_#000]">
               <div className="max-w-md">
-                <span className="mx-auto grid h-12 w-12 place-items-center bg-[#79e1ca] dark:bg-[#0ea5e9] text-[#111827] dark:text-black shadow-[3px_3px_0_#111827] dark:shadow-[3px_3px_0_#000]">
-                  <Boxes size={23} aria-hidden="true" />
-                </span>
-                <h2 className="mt-5 text-2xl font-bold tracking-[-0.04em] text-[#111827] dark:text-white">
+                <h2 className="text-2xl font-bold tracking-[-0.04em] text-[#111827] dark:text-white">
                   {query ? "Nothing matches that search" : "A blank floor plan is a good start"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#52627b] dark:text-[#a1a1aa]">
                   {query ? "Try another name, or clear the search to see every room." : "Create a space for focus, catch-ups, or the conversations that should not need a calendar invite."}
                 </p>
-                {!query && (
-                  <Button variant="primary" className="mt-5 gap-2 rounded-sm bg-[#183a8f] dark:bg-[#3b82f6] shadow-[3px_3px_0_#111827] dark:shadow-[3px_3px_0_#000] hover:bg-[#2451b2] dark:hover:bg-[#60a5fa] text-white dark:text-black font-bold" onClick={() => setIsCreateOpen(true)}>
-                    <Plus size={16} aria-hidden="true" />
-                    Create a space
-                  </Button>
-                )}
               </div>
             </div>
           )}

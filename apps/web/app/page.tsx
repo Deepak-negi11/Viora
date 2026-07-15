@@ -1,4 +1,4 @@
-import { ArrowDown, AudioLines, History, MapPinned, MessageCircleMore, MousePointer2, Star } from "lucide-react";
+import { ArrowDown, AudioLines, History, MapPinned, MessageCircleMore, MousePointer2 } from "lucide-react";
 import Image from "next/image";
 import { LandingHeader, LandingPrimaryCta } from "../components/landing/landing-header";
 import { GlobalCursorAvatar } from "../components/landing/global-cursor-avatar";
@@ -6,10 +6,10 @@ import { InteractiveHowItWorks } from "../components/landing/interactive-how-it-
 import styles from "./landing.module.css";
 
 const features = [
-  { index: "01", title: "Move together", body: "See teammates move through the same shared 2D room in real time.", icon: MapPinned },
-  { index: "02", title: "Talk when nearby", body: "Start voice and video naturally when you walk up to someone.", icon: AudioLines },
-  { index: "03", title: "Pick up where you left off", body: "Return through one link to the same room and recent conversation.", icon: History },
-  { index: "04", title: "Stay in the flow", body: "Use chat, reactions, and keyboard controls without opening another meeting tool.", icon: MessageCircleMore },
+  { index: "01", title: "See presence in real time", body: "Know who is available and where conversations are happening inside the shared 2D room.", icon: MapPinned },
+  { index: "02", title: "Talk by proximity", body: "Voice and video begin when teammates move close, then disconnect naturally when they step away.", icon: AudioLines },
+  { index: "03", title: "Keep shared context", body: "Return through one link to the same persistent room, layout, and recent team conversation.", icon: History },
+  { index: "04", title: "Collaborate without friction", body: "Use chat, reactions, and keyboard controls without scheduling another call or opening another tool.", icon: MessageCircleMore },
 ];
 
 const structuredData = {
@@ -82,7 +82,7 @@ export default function Home() {
           <div className={styles.sectionHeading}>
             <p className={styles.eyebrow}>How it works</p>
             <h2 id="how-title">One room.<br /><em>Three simple steps.</em></h2>
-            <p>Create a room, invite your team, and walk over when you want to talk.</p>
+            <p>Create one persistent workspace, share its link, and walk up to teammates whenever a conversation needs to happen.</p>
           </div>
           <InteractiveHowItWorks />
         </section>
@@ -113,35 +113,30 @@ export default function Home() {
       </main>
 
       <footer className={styles.footer}>
-        <div className={styles.footerBrand}>
-          <Image src="/viora-logo.svg" alt="Viora" width={112} height={30} className={styles.footerLogo} />
+        <div className={styles.footerTop}>
+          <div className={styles.footerLeft}>
+            <Image src="/viora-logo.svg" alt="Viora" width={96} height={20} className={styles.footerLogo} />
+            <span className={styles.footerDivider} aria-hidden="true" />
+            <p className={styles.footerCopy}>© {new Date().getFullYear()} Viora. All rights reserved.</p>
+          </div>
+          <div className={styles.footerSocial}>
+            <a href="https://github.com/Deepak-negi11/2D-Metaverse" target="_blank" rel="noreferrer" aria-label="Viora on GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.53-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11.03 11.03 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.35.77 1.05.77 2.12 0 1.53-.01 2.76-.01 3.14 0 .3.2.67.8.55A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+              </svg>
+            </a>
+            <a href="https://x.com/depx_____" target="_blank" rel="noreferrer" aria-label="Deepak on X">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z" />
+              </svg>
+             
+
+            </a>
+          </div>
         </div>
-        <p>Open source and built for teams that want a place—not another dashboard.</p>
-        <a
-          href="https://github.com/Deepak-negi11/2D-Metaverse"
-          target="_blank"
-          rel="noreferrer"
-          className={styles.footerGithub}
-        >
-          <svg
-            className="lucide lucide-github inline-block mr-1 align-text-bottom"
-            xmlns="http://www.w3.org/2000/svg"
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-            <path d="M9 18c-4.51 2-5-2-7-2" />
-          </svg>
-          View on GitHub
-          <Star size={14} />
-        </a>
-        <small>© {new Date().getFullYear()}</small>
+        <p className={styles.footerCredit}>
+          Built with <span aria-hidden="true">❤️</span> by <a href="https://x.com/depx_____" target="_blank" rel="noreferrer">Deepak</a>
+        </p>
       </footer>
     </div>
   );

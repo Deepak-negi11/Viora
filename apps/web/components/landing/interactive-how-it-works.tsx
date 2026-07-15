@@ -8,20 +8,20 @@ const steps = [
   {
     id: "create",
     number: "01",
-    title: "Create a space",
-    body: "Choose a layout that fits the way your team works. The room is ready before anyone arrives.",
+    title: "Create a persistent room",
+    body: "Choose a layout for your team. The space, its context, and recent conversation stay ready between visits.",
   },
   {
     id: "share",
     number: "02",
-    title: "Share one link",
-    body: "Send a direct room link. Teammates enter the same persistent space without setup or scheduling.",
+    title: "Invite with one link",
+    body: "Share a direct room link so teammates can enter the same workspace without setup, scheduling, or another meeting app.",
   },
   {
     id: "meet",
     number: "03",
-    title: "Walk closer",
-    body: "Move near someone to start talking naturally, while chat and reactions stay available everywhere.",
+    title: "Walk over to talk",
+    body: "Move near a teammate to start voice and video naturally. Step away when the conversation is done.",
   },
 ] as const;
 
@@ -97,7 +97,7 @@ export function InteractiveHowItWorks() {
               <i className={styles.ringOne} /><i className={styles.ringTwo} />
               <span className={styles.demoPersonOne}><MousePointer2 size={14} /></span>
               <span className={styles.demoPersonTwo} />
-              <b>Connected nearby</b>
+              <b>Proximity chat active</b>
             </div>
           )}
         </div>
