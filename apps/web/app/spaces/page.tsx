@@ -7,6 +7,7 @@ import { ArrowUpRight, Plus, Search, Share2, Check, Trash2, X } from "lucide-rea
 import { Button } from "@repo/ui/button";
 import { Navbar } from "../../components/navbar";
 import { CreateSpaceModal } from "../../components/create-space-modal";
+import { JoinSpaceModal } from "../../components/join-space-modal";
 import { getAuthToken } from "../../lib/auth-token";
 import { listSpaces, deleteSpace, type SpaceSummary } from "../../lib/space-api";
 
@@ -19,6 +20,7 @@ export default function SpacePage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteSpaceId, setDeleteSpaceId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,10 +97,19 @@ export default function SpacePage() {
                 Every space has a purpose. Step into the one your team needs, or create a new place for what&apos;s next.
               </p>
             </div>
-            <Button variant="primary" onClick={() => setIsCreateOpen(true)} className="gap-2 rounded-sm bg-[#183a8f]  shadow-[3px_3px_0_#111827]  hover:bg-[#2451b2]  text-white  font-bold">
-              <Plus size={17} strokeWidth={2.5} aria-hidden="true" />
-              New space
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setIsJoinOpen(true)}
+                className="rounded-sm border-2 border-[#111827] bg-white px-4 py-2 text-[#111827] shadow-[3px_3px_0_#111827] hover:bg-gray-50 hover:translate-x-px hover:translate-y-px hover:shadow-[2px_2px_0_#111827] transition font-bold"
+              >
+                Join space
+              </Button>
+              <Button variant="primary" onClick={() => setIsCreateOpen(true)} className="gap-2 rounded-sm bg-[#183a8f]  shadow-[3px_3px_0_#111827]  hover:bg-[#2451b2]  hover:translate-x-px hover:translate-y-px hover:shadow-[2px_2px_0_#111827] transition  text-white  font-bold">
+                <Plus size={17} strokeWidth={2.5} aria-hidden="true" />
+                New space
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -229,6 +240,11 @@ export default function SpacePage() {
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onCreated={(space) => setSpaces((previous) => [space, ...previous])}
+      />
+
+      <JoinSpaceModal
+        open={isJoinOpen}
+        onClose={() => setIsJoinOpen(false)}
       />
 
       <DeleteConfirmModal
