@@ -87,12 +87,19 @@ model mapElements {
 }
 
 
+enum ChatScope {
+  General
+  Room
+}
+
 model ChatMessage {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   spaceId   String
   userId    String
   text      String
-  createdAt DateTime @default(now())
+  scope     ChatScope @default(General)
+  roomId    String?
+  createdAt DateTime  @default(now())
 
-  @@index([spaceId, createdAt])
+  @@index([spaceId, scope, roomId, createdAt])
 }

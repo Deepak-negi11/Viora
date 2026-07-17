@@ -1,6 +1,6 @@
-import { ServerMessage } from "@repo/shared";
+import { getChatRoomAtPosition, ServerMessage } from "@repo/shared";
 import { redis } from "./redis";
-import { broadcast } from "./room-manager";
+import { broadcast, broadcastWhere } from "./room-manager";
 
 const SERVER_ID = crypto.randomUUID();
 //explain me this full file
@@ -10,6 +10,7 @@ type RoomEvent = {
   spaceId: string;
   exceptUserId: string;
   message: ServerMessage;
+  roomFilter?: { mapTemplate: string; roomId: string };
   createdAt: number;
 };
 
@@ -53,6 +54,12 @@ function parseRoomEvent(raw: string): RoomEvent | null {
       spaceId: data.spaceId,
       exceptUserId: data.exceptUserId,
       message: message.data,
+      roomFilter: data.roomFilter
+        && typeof data.roomFilter === "object"
+        && typeof data.roomFilter.mapTemplate === "string"
+        && typeof data.roomFilter.roomId === "string"
+        ? data.roomFilter
+        : undefined,
       createdAt: data.createdAt,
     };
   } catch {
@@ -84,7 +91,13 @@ export async function subscribeToSpaceEvents(spaceId: string) {
 
         if (!event || event.serverId === SERVER_ID) return;
 
-        broadcast(event.spaceId, event.exceptUserId, event.message);
+        if (event.roomFilter) {
+          broadcastWhere(event.spaceId, event.exceptUserId, event.message, (member) => (
+            getChatRoomAtPosition(event.roomFilter!.mapTemplate, member)?.id === event.roomFilter!.roomId
+          ));
+        } else {
+          broadcast(event.spaceId, event.exceptUserId, event.message);
+        }
       });
 
       subscribedSpaces.add(spaceId);
@@ -117,12 +130,14 @@ export async function publishRoomEvent(
   spaceId: string,
   exceptUserId: string,
   message: ServerMessage,
+  roomFilter?: { mapTemplate: string; roomId: string },
 ) {
   const event: RoomEvent = {
     serverId: SERVER_ID,
     spaceId,
     exceptUserId,
     message,
+    roomFilter,
     createdAt: Date.now(),
   };
 

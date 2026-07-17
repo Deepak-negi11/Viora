@@ -73,13 +73,18 @@ export const ErrorMessage = z.object({
 });
 
 
+export const ChatScope = z.enum(["general", "room"]);
+
 export const ChatBroadcastMessage = z.object({
   type: z.literal("chat"),
   payload: z.object({
     userId: z.string(),
     text: z.string(),
     at: z.number(),
-  })
+    scope: ChatScope,
+    roomId: z.string().optional(),
+    roomName: z.string().optional(),
+  }),
 })
 
 // what the server SENDS to everyone when someone reacts with an emoji
@@ -128,8 +133,9 @@ export const ServerMessage = z.discriminatedUnion("type", [
 export const ChatMessage = z.object({
   type: z.literal("chat"),
   payload: z.object({
-    text: z.string().min(1).max(500)
-  })
+    text: z.string().min(1).max(500),
+    scope: ChatScope.default("general"),
+  }),
 })
 
 // what the browser SENDS when you tap an emoji in the control bar

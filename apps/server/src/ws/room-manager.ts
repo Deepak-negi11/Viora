@@ -60,11 +60,18 @@ export function othersInRoom(spaceId: string, exceptUserId: string): Member[] {
 }
 
 export function broadcast(spaceId: string, exceptUserId: string, message: unknown) {
-  const data = JSON.stringify(message);
+  broadcastWhere(spaceId, exceptUserId, message, () => true);
+}
 
-  //explain this for loop to me in this 
+export function broadcastWhere(
+  spaceId: string,
+  exceptUserId: string,
+  message: unknown,
+  predicate: (member: Omit<Member, "socket">) => boolean,
+) {
+  const data = JSON.stringify(message);
   for (const member of othersInRoom(spaceId, exceptUserId)) {
-    member.socket.send(data);
+    if (predicate(member)) member.socket.send(data);
   }
 }
 

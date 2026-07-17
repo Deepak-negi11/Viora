@@ -77,12 +77,27 @@ export function getUsersMetadata(token: string, ids: string[]) {
 }
 
 // one stored chat message
-export type StoredMessage = { id: string; userId: string; text: string; at: number };
+export type ChatScope = "general" | "room";
+export type StoredMessage = {
+  id: string;
+  userId: string;
+  text: string;
+  at: number;
+  scope: ChatScope;
+  roomId?: string;
+  roomName?: string;
+};
 
-// recent chat history for a space (oldest first)
-export function getSpaceMessages(token: string, spaceId: string) {
+export function getSpaceMessages(
+  token: string,
+  spaceId: string,
+  scope: ChatScope = "general",
+  roomId?: string,
+) {
+  const params = new URLSearchParams({ scope });
+  if (roomId) params.set("roomId", roomId);
   return apiRequest<{ messages: StoredMessage[] }>(
-    `/api/v1/space/${spaceId}/messages`,
+    `/api/v1/space/${spaceId}/messages?${params.toString()}`,
     { token },
   );
 }

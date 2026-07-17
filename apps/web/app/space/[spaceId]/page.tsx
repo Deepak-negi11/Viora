@@ -30,7 +30,12 @@ export default function SpacePage() {
   const [spaceName, setSpaceName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hasEntered, setHasEntered] = useState(false);
+  const [hasEntered, setHasEntered] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(`metaverse:entered:${params.spaceId}`) === "true";
+    }
+    return false;
+  });
 
   useEffect(() => {
     const token = getAuthToken();
@@ -67,6 +72,7 @@ export default function SpacePage() {
             await updateProfile(token, { username: name });
           }
           localStorage.setItem("metaverse:username", name);
+          sessionStorage.setItem(`metaverse:entered:${params.spaceId}`, "true");
           setDisplayName(name);
           setHasEntered(true);
         }}
@@ -80,7 +86,10 @@ export default function SpacePage() {
       mapTemplate={mapTemplate}
       media={media}
       initialDisplayName={displayName}
-      onLeave={() => router.push("/spaces")}
+      onLeave={() => {
+        sessionStorage.removeItem(`metaverse:entered:${params.spaceId}`);
+        router.push("/spaces");
+      }}
     />
   );
 }
@@ -105,13 +114,15 @@ function LiveSpace({
     self,
     others,
     move,
-    messages,
+    generalMessages,
+    roomMessages,
+    currentRoom,
     sendChat,
     reactions,
     sendReaction,
     sendSignal,
     registerSignalHandler,
-  } = useSpaceSocket(spaceId);
+  } = useSpaceSocket(spaceId, mapTemplate);
 
   const othersRef = useRef(others);
   othersRef.current = others;
@@ -217,7 +228,14 @@ function LiveSpace({
       />
       <PresenceBar people={people} />
       <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
-      <ChatPanel messages={messages} names={names} selfId={selfId} onSend={sendChat} />
+      <ChatPanel
+        generalMessages={generalMessages}
+        roomMessages={roomMessages}
+        currentRoom={currentRoom}
+        names={names}
+        selfId={selfId}
+        onSend={sendChat}
+      />
       <ControlBar
         displayName={(selfId ? names[selfId] : undefined) ?? "You"}
         onLeave={onLeave}

@@ -1,10 +1,11 @@
 import prisma from "@repo/db";
-import { ClientMessage, getMapTemplate } from "@repo/shared";
+import { ClientMessage, getChatRoomAtPosition, getMapTemplate } from "@repo/shared";
 import { getUserIdFromToken } from "../middleware/auth";
 import type { Socket, SocketData } from "./room-manager";
 import {
   addToRoom,
   broadcast,
+  broadcastWhere,
   removeFromRoom,
   roomSize,
   updatePosition,
@@ -196,32 +197,62 @@ async function handleSignal(ws:Socket , payload:SignalPayload){
 
 }
 
-async function handleChat(ws:Socket , payload:ChatPayload) {
-   const { spaceId ,userId} = ws.data;
-   if (!spaceId || !userId) {
-    return send(ws , {type:"error" ,message:"Join a space first"})
-   }
+async function handleChat(ws: Socket, payload: ChatPayload) {
+  const { spaceId, userId, x, y } = ws.data;
+  if (!spaceId || !userId) {
+    return send(ws, { type: "error", message: "Join a space first" });
+  }
 
-   //what is this now what will be  the paylaod in this and what is this slice(0,500)
-   const text = payload.text.trim().slice(0,500);
-   if(!text) return
+  const text = payload.text.trim().slice(0, 500);
+  if (!text) return;
 
-   // save the message so late joiners / refreshes can load history
-   const saved = await prisma.chatMessage.create({
-     data: { spaceId, userId, text },
-   });
+  const space = await prisma.space.findUnique({
+    where: { id: spaceId },
+    select: { mapTemplate: true },
+  });
+  if (!space) return send(ws, { type: "error", message: "Space not found" });
 
-   const message = {
-    type:"chat",
-    payload:{userId , text, at: saved.createdAt.getTime()},
-    //what does this as const menas in this why we ahve written in this even
-   } as const;
+  const room = payload.scope === "room"
+    ? getChatRoomAtPosition(space.mapTemplate, { x, y })
+    : null;
+  if (payload.scope === "room" && !room) {
+    return send(ws, { type: "error", message: "Enter a room to use room chat" });
+  }
 
-   // send to everyone else on THIS server, then to other servers via Redis pub/sub
-   broadcast(spaceId , userId , message);
-   await publishRoomEvent(spaceId , userId , message);
+  const saved = await prisma.chatMessage.create({
+    data: {
+      spaceId,
+      userId,
+      text,
+      scope: payload.scope === "room" ? "Room" : "General",
+      roomId: room?.id,
+    },
+  });
 
+  const message = {
+    type: "chat",
+    payload: {
+      userId,
+      text,
+      at: saved.createdAt.getTime(),
+      scope: payload.scope,
+      roomId: room?.id,
+      roomName: room?.name,
+    },
+  } as const;
 
+  if (room) {
+    broadcastWhere(spaceId, userId, message, (member) => (
+      getChatRoomAtPosition(space.mapTemplate, member)?.id === room.id
+    ));
+    await publishRoomEvent(spaceId, userId, message, {
+      mapTemplate: space.mapTemplate,
+      roomId: room.id,
+    });
+  } else {
+    broadcast(spaceId, userId, message);
+    await publishRoomEvent(spaceId, userId, message);
+  }
 }
 
 async function handleReaction(ws: Socket, payload: ReactionPayload) {

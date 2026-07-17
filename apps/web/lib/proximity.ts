@@ -1,6 +1,6 @@
 
 export type Point ={ x:number , y:number};
-export const PROXIMITY_RADIUS = 3;
+export const PROXIMITY_RADIUS = 6;
 
 //this takes a square zone around you 
 export function tileApart(a:Point , b:Point):number{

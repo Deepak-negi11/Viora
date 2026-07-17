@@ -1,4 +1,6 @@
 import prisma from "@repo/db";
+import { getChatRoom, getChatRoomAtPosition } from "@repo/shared";
+import { getUserPosition } from "../ws/presence";
 import {
   DEFAULT_MAP_TEMPLATE,
   getMapTemplate,
@@ -243,21 +245,52 @@ export async function handleGetMessages(req: Request): Promise<Response> {
 
   const space = await prisma.space.findUnique({
     where: { id: spaceId },
-    select: { id: true },
+    select: { id: true, mapTemplate: true },
   });
   if (!space) {
     return jsonMessage("Space not found");
   }
 
+  const url = new URL(req.url);
+  const scope = url.searchParams.get("scope") === "room" ? "room" : "general";
+  const requestedRoomId = url.searchParams.get("roomId");
+  let roomId: string | null = null;
+  let roomName: string | undefined;
+
+  if (scope === "room") {
+    const position = await getUserPosition(spaceId, auth.userId);
+    const currentRoom = position
+      ? getChatRoomAtPosition(space.mapTemplate, position)
+      : null;
+    if (!currentRoom || currentRoom.id !== requestedRoomId) {
+      return jsonMessage("Enter this room to view its chat", 403);
+    }
+    const room = getChatRoom(space.mapTemplate, currentRoom.id);
+    roomId = currentRoom.id;
+    roomName = room?.name;
+  }
+
   const rows = await prisma.chatMessage.findMany({
-    where: { spaceId },
+    where: {
+      spaceId,
+      scope: scope === "room" ? "Room" : "General",
+      roomId,
+    },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
   const messages = rows
     .reverse()
-    .map((m) => ({ id: m.id, userId: m.userId, text: m.text, at: m.createdAt.getTime() }));
+    .map((message) => ({
+      id: message.id,
+      userId: message.userId,
+      text: message.text,
+      at: message.createdAt.getTime(),
+      scope,
+      roomId: message.roomId ?? undefined,
+      roomName,
+    }));
 
   return Response.json({ messages });
 }
