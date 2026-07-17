@@ -1,7 +1,4 @@
-"""Generate a top-down 2-seat sofa sprite matching the LimeZu-style palette used
-in arena-scene. Pure procedural pixel art: draw at 1x on a small grid, export PNG.
-Run: python3 gen_sofa.py  -> writes ../../apps/web/public/assets/custom/sofa-red.png
-"""
+
 from PIL import Image
 
 # --- palette (pulled to sit beside the game's warm-wood + muted tones) ---

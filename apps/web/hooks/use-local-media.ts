@@ -27,8 +27,11 @@ export function useLocalMedia() {
   const toggleMic = useCallback(async () => {
     const currentTrack = streamRef.current?.getAudioTracks()[0];
     if (currentTrack) {
-      currentTrack.enabled = !currentTrack.enabled;
-      setMicStatus(currentTrack.enabled ? "on" : "off");
+      currentTrack.stop();
+      const remainingTracks = (streamRef.current?.getTracks() ?? []).filter((t) => t !== currentTrack);
+      const next = new MediaStream(remainingTracks);
+      updateStream(next);
+      setMicStatus("off");
       return;
     }
     if (micRequestRef.current) return;
@@ -53,8 +56,11 @@ export function useLocalMedia() {
   const toggleCam = useCallback(async () => {
     const currentTrack = streamRef.current?.getVideoTracks()[0];
     if (currentTrack) {
-      currentTrack.enabled = !currentTrack.enabled;
-      setCamStatus(currentTrack.enabled ? "on" : "off");
+      currentTrack.stop();
+      const remainingTracks = (streamRef.current?.getTracks() ?? []).filter((t) => t !== currentTrack);
+      const next = new MediaStream(remainingTracks);
+      updateStream(next);
+      setCamStatus("off");
       return;
     }
     if (camRequestRef.current) return;

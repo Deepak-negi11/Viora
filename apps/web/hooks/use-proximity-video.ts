@@ -163,14 +163,25 @@ export function useProximityVideo({
     peersRef.current.forEach((pc, peerId) => {
       let changed = false;
       for (const transceiver of pc.getTransceivers()) {
-        const kind = transceiver.receiver.track.kind;
+        const kind = transceiver.sender.track?.kind || transceiver.receiver.track?.kind;
+        if (!kind) continue;
+
         const track = kind === "audio"
           ? localStream?.getAudioTracks()[0]
           : localStream?.getVideoTracks()[0];
-        if (track && transceiver.sender.track?.id !== track.id) {
-          void transceiver.sender.replaceTrack(track);
-          transceiver.direction = "sendrecv";
-          changed = true;
+
+        if (track) {
+          if (transceiver.sender.track?.id !== track.id) {
+            void transceiver.sender.replaceTrack(track);
+            transceiver.direction = "sendrecv";
+            changed = true;
+          }
+        } else {
+          if (transceiver.sender.track !== null) {
+            void transceiver.sender.replaceTrack(null);
+            transceiver.direction = "recvonly";
+            changed = true;
+          }
         }
       }
       if (changed) void sendOffer(peerId, pc);

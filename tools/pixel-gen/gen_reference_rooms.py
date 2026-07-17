@@ -1,8 +1,4 @@
-"""Original reference-driven furniture kits for the Coworking Campus.
 
-Every chair direction is drawn explicitly. No sprite is rotated or flipped: lighting,
-shadow, backrest and seat geometry stay correct for the fixed top-down camera.
-"""
 from pathlib import Path
 from PIL import Image, ImageDraw
 

@@ -1,21 +1,13 @@
-"""Shared palette for all generated sprites.
 
-Colors are chosen to sit beside the game's runtime-drawn surfaces
-(arena-scene.ts makeTextures): warm wood floor 0xe9dcc0, wall 0x5a6170,
-office checker 0xb9c1de — muted, low-saturation, dark outlines.
-Every sprite family gets base / light / dark / outline steps so the
-light direction (top-left) stays consistent across the set.
-"""
 
-OUTLINE = (43, 43, 60)        # near-black blue-grey, used on every sprite
+OUTLINE = (43, 43, 60)        
 
-# woods (tables, shelves, feet)
 WOOD      = (140, 100, 66)
 WOOD_L    = (168, 126, 88)
 WOOD_D    = (108, 76, 50)
-WOOD_PALE = (222, 197, 154)   # tabletop, close to floor wood but distinct
+WOOD_PALE = (222, 197, 154)   
 
-# dark office furniture (chairs, monitor bodies)
+
 SLATE   = (74, 80, 94)
 SLATE_L = (100, 107, 122)
 SLATE_D = (56, 61, 72)
@@ -40,7 +32,7 @@ WHITE   = (238, 240, 242)
 GREY_L  = (198, 203, 210)
 GREY    = (154, 160, 170)
 GREY_D  = (112, 118, 128)
-SCREEN  = (166, 214, 222)     # glowing display
+SCREEN  = (166, 214, 222)     
 SCREEN_D= (120, 174, 186)
 
 # terracotta / pots
@@ -49,7 +41,7 @@ POT_L = (194, 134, 96)
 POT_D = (134, 82, 56)
 
 # game corner accents
-PP_GREEN  = (98, 168, 116)    # ping-pong top
+PP_GREEN  = (98, 168, 116)    
 PP_GREEN_D= (74, 136, 92)
 YELLOW    = (222, 186, 100)
 

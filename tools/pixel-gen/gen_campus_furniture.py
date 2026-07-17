@@ -1,8 +1,4 @@
-"""Render polished, original furniture for the Coworking Campus.
 
-The art is drawn at 3x and downsampled with light antialiasing. Logical sizes still
-align to the 32px game grid, while curves, upholstery and shadows read naturally.
-"""
 from pathlib import Path
 from PIL import Image, ImageDraw
 

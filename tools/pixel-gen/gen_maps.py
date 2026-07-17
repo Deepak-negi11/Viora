@@ -1,4 +1,3 @@
-"""Generate compact pixel-art previews for the room template picker."""
 import os
 from PIL import Image, ImageDraw
 

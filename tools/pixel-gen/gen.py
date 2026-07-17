@@ -1,19 +1,7 @@
-"""Generate the full custom furniture sprite set.
 
-Run:  python3 gen.py
-Output: apps/web/public/assets/custom/*.png
-
-Style rules (match LimeZu + the runtime-drawn map):
-- top-down with a visible front face (fake 2.5D)
-- light from the top-left: top surfaces lightest, right/bottom faces darkest
-- 1px dark outline around every silhouette
-- sizes in whole/half tiles (TILE = 32) so collision footprints stay exact
-"""
 from palette import *
 from draw import canvas, rect, hline, vline, dot, outline_shape, save
 
-
-# ---------------------------------------------------------------- desks / office
 
 def desk_monitor():
     """Private-office desk with a monitor, sat from below (avatar faces up)."""
