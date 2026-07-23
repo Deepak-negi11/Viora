@@ -58,7 +58,6 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
                     game.registry.set("namesRef" , namesRef);
                     game.registry.set("nearbyRef" , nearbyRef);
                     game.registry.set("reactionsRef" , reactionsRef);
-                    game.registry.set("selfId", selfId);
                 },
             },
 
