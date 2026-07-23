@@ -1,6 +1,6 @@
 "use client";
 
-// One person shown in the presence bar.
+
 export type PresencePerson = {
   id: string;
   name: string;
@@ -12,13 +12,13 @@ type PresenceBarProps = {
   people: PresencePerson[];
 };
 
-// Top-left panel showing who is currently in the space (Gather-style presence).
-// It reads straight from the socket data the page already has — no extra fetch.
-// Like the control bar, it's a React overlay on top of the Phaser canvas.
+
+
+
 export function PresenceBar({ people }: PresenceBarProps) {
   return (
     <div className="pointer-events-none absolute left-4 top-4 flex flex-col items-start gap-2">
-      {/* live count */}
+
       <div className="pointer-events-auto inline-flex items-center gap-1.5 bg-transparent p-0 border-none shadow-none backdrop-blur-none select-none">
         <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60 motion-reduce:animate-none" />

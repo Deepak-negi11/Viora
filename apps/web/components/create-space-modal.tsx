@@ -86,7 +86,7 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
         onClick={(event) => event.stopPropagation()}
       >
         {createdSpaceId ? (
-          // Success Screen: Share Link
+
           <div>
             <div className="flex items-start justify-between border-b-2 border-[#111827] pb-5">
               <div>
@@ -149,7 +149,7 @@ export function CreateSpaceModal({ open, onClose, onCreated }: CreateSpaceModalP
             </div>
           </div>
         ) : (
-          // Creation Form
+
           <div>
             <div className="flex items-start justify-between gap-4 border-b-2 border-[#111827] pb-5">
               <div>

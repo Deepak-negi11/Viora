@@ -1,51 +1,51 @@
 
 
-OUTLINE = (43, 43, 60)        
+OUTLINE = (43, 43, 60)
 
 WOOD      = (140, 100, 66)
 WOOD_L    = (168, 126, 88)
 WOOD_D    = (108, 76, 50)
-WOOD_PALE = (222, 197, 154)   
+WOOD_PALE = (222, 197, 154)
 
 
 SLATE   = (74, 80, 94)
 SLATE_L = (100, 107, 122)
 SLATE_D = (56, 61, 72)
 
-# reds (meeting chairs, sofa)
+
 RED   = (191, 78, 78)
 RED_L = (214, 108, 104)
 RED_D = (150, 54, 58)
 
-# blues (sofa, beanbag)
+
 BLUE   = (94, 122, 173)
 BLUE_L = (122, 150, 198)
 BLUE_D = (70, 94, 138)
 
-# greens (plants)
+
 LEAF   = (94, 146, 86)
 LEAF_L = (124, 176, 108)
 LEAF_D = (66, 112, 64)
 
-# neutrals (screens, paper, metal)
+
 WHITE   = (238, 240, 242)
 GREY_L  = (198, 203, 210)
 GREY    = (154, 160, 170)
 GREY_D  = (112, 118, 128)
-SCREEN  = (166, 214, 222)     
+SCREEN  = (166, 214, 222)
 SCREEN_D= (120, 174, 186)
 
-# terracotta / pots
+
 POT   = (168, 108, 74)
 POT_L = (194, 134, 96)
 POT_D = (134, 82, 56)
 
-# game corner accents
-PP_GREEN  = (98, 168, 116)    
+
+PP_GREEN  = (98, 168, 116)
 PP_GREEN_D= (74, 136, 92)
 YELLOW    = (222, 186, 100)
 
-# campus lounge and water accents
+
 GREEN      = (72, 150, 112)
 GREEN_L    = (105, 184, 142)
 GREEN_D    = (48, 112, 84)

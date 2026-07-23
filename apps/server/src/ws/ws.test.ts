@@ -273,13 +273,13 @@ describe("WebSocket", () => {
       const wsA = new TestSocket(WS_URL);
       await wsA.waitForOpen();
       wsA.send({ type: "join", payload: { spaceId, token: tokenA } });
-      await wsA.nextMessage(); // space-joined
+      await wsA.nextMessage();
 
       const wsB = new TestSocket(WS_URL);
       await wsB.waitForOpen();
       wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
-      await wsB.nextMessage(); // space-joined
-      await wsA.nextMessage(); // user-join for B
+      await wsB.nextMessage();
+      await wsA.nextMessage();
 
       wsB.send({ type: "chat", payload: { text: "hello team" } });
 
@@ -309,7 +309,7 @@ describe("WebSocket", () => {
       await wsA.nextMessage();
 
       wsB.send({ type: "chat", payload: { text: "persist me" } });
-      await wsA.nextMessage(); // chat broadcast arrives only after the DB write
+      await wsA.nextMessage();
 
       const history = await http.get(`/api/v1/space/${spaceId}/messages`, {
         headers: { Authorization: `Bearer ${tokenA}` },
@@ -367,9 +367,9 @@ describe("WebSocket", () => {
       wsB.send({ type: "join", payload: { spaceId, token: tokenB } });
       const joinedB = await wsB.nextMessage();
       const userIdB = joinedB.payload?.userId as string;
-      await wsA.nextMessage(); // A gets user-join for B
+      await wsA.nextMessage();
 
-      // A sends a signal aimed at B — only B should receive it
+
       wsA.send({
         type: "webrtc-signal",
         payload: { targetUserId: userIdB, signal: { kind: "offer", sdp: "fake-sdp" } },

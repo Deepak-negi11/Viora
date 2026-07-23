@@ -102,7 +102,7 @@ export function Navbar() {
           </Link>
 
           <nav className="flex items-center gap-1.5 text-sm" aria-label="Primary navigation">
-            {/* If on Auth pages, show clean toggle link */}
+
             {isSignIn && (
               <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-sm border-2 border-[#111827]  bg-[#171a18]  px-3 py-1.5 font-bold text-white  shadow-[2px_2px_0_#111827]  transition hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_#111827] ">
                 Get started
@@ -115,12 +115,12 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Normal flow */}
+
             {!isSignIn && !isSignUp && (
               <>
                 {isLoggedIn ? (
                   <div className="flex items-center gap-4">
-                    {/* Account Dropdown Trigger container */}
+
                     <div className="relative" ref={dropdownRef}>
                       <button
                         type="button"
@@ -131,7 +131,7 @@ export function Navbar() {
                         <User size={22} className="stroke-[1.75]" />
                       </button>
 
-                      {/* Account Dropdown Card */}
+
                       {isDropdownOpen && (
                         <div className="absolute right-0 top-full mt-2 w-72 bg-[#2d2d2d]  border border-neutral-700/60  rounded-2xl p-4 shadow-xl z-50 text-white animate-in fade-in slide-in-from-top-1 duration-150">
                           <div className="px-1 pb-3 mb-2 border-b border-neutral-700/50">

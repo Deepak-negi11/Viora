@@ -26,7 +26,11 @@ import { stopAllRoomEventSubscriptions } from "./src/ws/pubsub";
 
 let activeServers = 0;
 
+
+
 type RouteHandler = (req: Request) => Response | Promise<Response>;
+
+
 
 function getCorsHeaders(origin: string | null) {
   const configuredOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
@@ -78,14 +82,14 @@ export function startServer(port: number) {
   const server = Bun.serve({
     port,
     routes: {
-      // health
+
       "/health": { GET: () => Response.json({ status: "ok" }) },
 
-      // auth
+
       "/api/v1/signup": { POST: withCors(handleSignup), OPTIONS: handleCorsPreflight },
       "/api/v1/signin": { POST: withCors(handleSignin), OPTIONS: handleCorsPreflight },
 
-      // user
+
       "/api/v1/user/metadata": {
         POST: withCors(handleUpdateMetadata),
         OPTIONS: handleCorsPreflight,
@@ -100,7 +104,7 @@ export function startServer(port: number) {
       },
       "/api/v1/avatars": { GET: withCors(handleGetAvatars), OPTIONS: handleCorsPreflight },
 
-      // admin
+
       "/api/v1/admin/element": {
         POST: withCors(handleCreateElement),
         OPTIONS: handleCorsPreflight,
@@ -111,7 +115,7 @@ export function startServer(port: number) {
       },
       "/api/v1/admin/map": { POST: withCors(handleCreateMap), OPTIONS: handleCorsPreflight },
 
-      // space + arena
+
       "/api/v1/space": { POST: withCors(handleCreateSpace), OPTIONS: handleCorsPreflight },
       "/api/v1/space/all": { GET: withCors(handleListSpaces), OPTIONS: handleCorsPreflight },
       "/api/v1/space/element": {
@@ -130,7 +134,7 @@ export function startServer(port: number) {
       "/api/v1/elements": { GET: withCors(handleListElements), OPTIONS: handleCorsPreflight },
     },
     fetch(req, server) {
-      // Upgrade WebSocket connections on /ws
+
       if (new URL(req.url).pathname === "/ws") {
         const ok = server.upgrade(req, { data: makeSocketData() });
         if (ok) return;

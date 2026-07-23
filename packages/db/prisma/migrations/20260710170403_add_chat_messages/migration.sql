@@ -1,4 +1,3 @@
--- CreateTable
 CREATE TABLE "ChatMessage" (
     "id" TEXT NOT NULL,
     "spaceId" TEXT NOT NULL,
@@ -8,6 +7,4 @@ CREATE TABLE "ChatMessage" (
 
     CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
 CREATE INDEX "ChatMessage_spaceId_createdAt_idx" ON "ChatMessage"("spaceId", "createdAt");

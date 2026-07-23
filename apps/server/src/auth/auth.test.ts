@@ -7,7 +7,8 @@ const BACKEND_URL = `http://localhost:${PORT}`;
 
 let server: ReturnType<typeof startServer>;
 
-//this is the thing which will run before every test or run at only at the start
+
+
 beforeAll(() => {
   server = startServer(PORT);
 });
@@ -60,7 +61,9 @@ describe("Authentication", () => {
   describe("signup", () => {
     test("user can sign up", async () => {
       const username = `deepak-${crypto.randomUUID()}`;
-      //i have a question that i am sending  this request to a url not a route or the function so how we are chekking and by this how is hte code is test which i have written
+
+
+
       const res = await post("/api/v1/signup", {
         username,
         password: "password123",

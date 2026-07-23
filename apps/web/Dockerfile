@@ -18,7 +18,6 @@ FROM base AS prerelease
 COPY --from=install /temp/dev/ .
 COPY . .
 
-# Build Next.js application
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST

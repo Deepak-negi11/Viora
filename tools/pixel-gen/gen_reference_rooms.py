@@ -27,30 +27,30 @@ def save(im,n):im.resize((im.width//S,im.height//S),Image.Resampling.LANCZOS).sa
 
 def chair(family, direction, frame, frame_l, frame_d, cushion, cushion_l, cushion_d, modern=False):
  im=cv(44,48);d=dr(im);o=C["outline"]
- # fixed world shadow, always below the object
+
  el(d,(5,38,39,47),C["shadow"])
- if direction=="down": # located above table, person faces down
+ if direction=="down":
   rr(d,(7,3,37,13),frame,o,4); rr(d,(10,5,34,11),cushion,o,3);ln(d,(13,7,31,7),cushion_l,1)
   rr(d,(5,11,10,35),frame,o,2);rr(d,(34,11,39,35),frame_d,o,2)
   rr(d,(9,19,35,36),cushion,o,5);ln(d,(13,22,31,22),cushion_l,2)
   rr(d,(8,34,13,43),frame_d,o,1);rr(d,(31,34,36,43),frame_d,o,1)
- elif direction=="up": # located below table, person faces up; back nearest camera
+ elif direction=="up":
   rr(d,(9,8,35,25),cushion,o,5);ln(d,(13,11,31,11),cushion_l,2)
   rr(d,(5,9,10,32),frame_l,o,2);rr(d,(34,9,39,32),frame_d,o,2)
   rr(d,(7,25,37,39),frame,o,4);rr(d,(10,27,34,36),cushion_d,o,3);ln(d,(13,29,31,29),cushion,1)
   rr(d,(8,37,13,44),frame_d,o,1);rr(d,(31,37,36,44),frame_d,o,1)
- elif direction=="right": # located left of table, faces right
+ elif direction=="right":
   rr(d,(5,5,15,39),frame,o,4);rr(d,(7,8,13,35),cushion_d,o,3)
   rr(d,(13,11,37,17),frame_l,o,2);rr(d,(13,33,37,39),frame_d,o,2)
   rr(d,(14,15,36,35),cushion,o,5);ln(d,(17,18,32,18),cushion_l,2)
   rr(d,(11,36,16,44),frame_d,o,1);rr(d,(33,35,38,42),frame_d,o,1)
- else: # located right of table, faces left
+ else:
   rr(d,(29,5,39,39),frame_d,o,4);rr(d,(31,8,37,35),cushion_d,o,3)
   rr(d,(7,11,31,17),frame_l,o,2);rr(d,(7,33,31,39),frame,o,2)
   rr(d,(8,15,30,35),cushion,o,5);ln(d,(12,18,27,18),cushion_l,2)
   rr(d,(6,35,11,42),frame_d,o,1);rr(d,(28,36,33,44),frame_d,o,1)
  if modern:
-  # stable metal base accents; these are placed, never transformed
+
   ln(d,(11,42,33,42),C["dark_d"],2);rr(d,(9,41,13,45),C["grey_d"],o,1);rr(d,(31,41,35,45),C["grey_d"],o,1)
  save(im,f"ref-{family}-{direction}")
 
@@ -102,7 +102,7 @@ def lounge_sofa():
  rr(d,(14,40,21,47),C["wood_d"],o,1);rr(d,(81,40,88,47),C["wood_d"],o,1);save(im,"ref-lounge-sofa")
 lounge_sofa()
 
-# Contact sheet: canonical order proves that every direction is independently authored.
+
 sheet=Image.new("RGBA",(5*120,4*100),(232,223,204,255));sd=ImageDraw.Draw(sheet)
 for col,fam in enumerate(families):
  for row,direction in enumerate(("down","right","up","left")):

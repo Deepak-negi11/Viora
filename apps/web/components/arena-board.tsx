@@ -3,7 +3,7 @@
 import { cn } from "@repo/ui/cn";
 import type { Others, Position } from "../hooks/use-space-socket";
 
-const TILE = 40; // pixels per tile
+const TILE = 40;
 
 function initial(id: string) {
   return id.charAt(0).toUpperCase();

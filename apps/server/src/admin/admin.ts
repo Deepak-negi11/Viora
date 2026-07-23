@@ -3,7 +3,8 @@ import { requireAuth } from "../middleware/auth";
 import { parseDimensions } from "../utils/dimensions";
 import { jsonMessage } from "../utils/http";
 
-//what is this body is this element body what does that means
+
+
 type CreateElementBody = {
   imageUrl?: string;
   width?: unknown;
@@ -38,14 +39,17 @@ async function requireAdmin(req: Request): Promise<{ userId: string } | Response
   return { userId: auth.userId };
 }
 
-//what is the create element what is the element in this like the i think we are nto creating element we are using the pre build element so this is the route which is used no where
+
 
 export async function handleCreateElement(req: Request): Promise<Response> {
   const admin = await requireAdmin(req);
-  //what is this instace of the respose mean in this
+
+
   if (admin instanceof Response) return admin;
 
-  //what is this explain me this i do understand the menaing explain me the syntax in this
+
+
+
   const body = (await req.json().catch(() => null)) as CreateElementBody | null;
   const { imageUrl, width, height, static: isStatic } = body ?? {};
 
@@ -73,7 +77,8 @@ export async function handleCreateElement(req: Request): Promise<Response> {
   return Response.json({ id: element.id });
 }
 
-//even this is not used any where because the not creating hte avatar also
+
+
 export async function handleCreateAvatar(req: Request): Promise<Response> {
   const admin = await requireAdmin(req);
   if (admin instanceof Response) return admin;
@@ -92,7 +97,9 @@ export async function handleCreateAvatar(req: Request): Promise<Response> {
   return Response.json({ avatarId: avatar.id });
 }
 
-//i do think they are the route which can we used if i have not create dhte prebuild map i thik theri is only one map for now so even this isuse ess so tell me if it is or not i am mising somthing
+
+
+
 export async function handleCreateMap(req: Request): Promise<Response> {
   const admin = await requireAdmin(req);
   if (admin instanceof Response) return admin;

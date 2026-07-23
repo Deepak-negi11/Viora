@@ -2,8 +2,25 @@ import { getChatRoomAtPosition, ServerMessage } from "@repo/shared";
 import { redis } from "./redis";
 import { broadcast, broadcastWhere } from "./room-manager";
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const SERVER_ID = crypto.randomUUID();
-//explain me this full file
+
 
 type RoomEvent = {
   serverId: string;
@@ -14,24 +31,44 @@ type RoomEvent = {
   createdAt: number;
 };
 
+
+
 let subscriber: Awaited<ReturnType<typeof redis.duplicate>> | null = null;
-// what is this new Set in this 
+
+
+
+
 const subscribedSpaces = new Set<string>();
+
+
+
+
+
+
+
 const pendingSubscriptions = new Map<string, Promise<void>>();
+
 
 function closeSubscriber() {
   try {
     subscriber?.close();
   } catch {
-    // Closing is best-effort cleanup; the connection may already be closed.
+
   } finally {
     subscriber = null;
   }
 }
 
+
+
 function roomChannel(spaceId: string) {
   return `space:${spaceId}:events`;
 }
+
+
+
+
+
 
 function parseRoomEvent(raw: string): RoomEvent | null {
   try {
@@ -67,24 +104,44 @@ function parseRoomEvent(raw: string): RoomEvent | null {
   }
 }
 
+
+
 async function getSubscriber() {
   if (!subscriber) {
+
     subscriber = await redis.duplicate();
   }
 
   return subscriber;
 }
 
-//what is this room and the space differenc in this  both 
+
+
+
+
+
+
+
+
 export async function subscribeToSpaceEvents(spaceId: string) {
   if (subscribedSpaces.has(spaceId)) return;
+
+
 
   const pending = pendingSubscriptions.get(spaceId);
   if (pending) return pending;
 
+
+
+
+
   const subscription = (async () => {
     try {
       const activeSubscriber = await getSubscriber();
+
+
+
+
 
       await activeSubscriber.subscribe(roomChannel(spaceId), (raw) => {
         const event = parseRoomEvent(raw);
@@ -92,7 +149,10 @@ export async function subscribeToSpaceEvents(spaceId: string) {
         if (!event || event.serverId === SERVER_ID) return;
 
         if (event.roomFilter) {
+
+
           broadcastWhere(event.spaceId, event.exceptUserId, event.message, (member) => (
+
             getChatRoomAtPosition(event.roomFilter!.mapTemplate, member)?.id === event.roomFilter!.roomId
           ));
         } else {
@@ -101,14 +161,21 @@ export async function subscribeToSpaceEvents(spaceId: string) {
       });
 
       subscribedSpaces.add(spaceId);
+
+
+
     } finally {
       pendingSubscriptions.delete(spaceId);
     }
   })();
 
   pendingSubscriptions.set(spaceId, subscription);
+
   await subscription;
 }
+
+
+
 
 export async function unsubscribeFromSpaceEvents(spaceId: string) {
   if (!subscriber || !subscribedSpaces.has(spaceId)) return;
@@ -116,8 +183,8 @@ export async function unsubscribeFromSpaceEvents(spaceId: string) {
   try {
     await subscriber.unsubscribe(roomChannel(spaceId));
   } catch {
-    // If Redis already closed the subscription connection, local cleanup still needs to finish.
   }
+
 
   subscribedSpaces.delete(spaceId);
 
@@ -125,6 +192,7 @@ export async function unsubscribeFromSpaceEvents(spaceId: string) {
     closeSubscriber();
   }
 }
+
 
 export async function publishRoomEvent(
   spaceId: string,
@@ -144,13 +212,17 @@ export async function publishRoomEvent(
   await redis.publish(roomChannel(spaceId), JSON.stringify(event));
 }
 
+
+
+
+
 export async function stopAllRoomEventSubscriptions() {
   if (!subscriber) return;
 
   try {
     await subscriber.unsubscribe();
   } catch {
-    // Server shutdown should not fail because the Redis subscription is already closed.
+
   }
 
   closeSubscriber();

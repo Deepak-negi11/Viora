@@ -18,7 +18,6 @@ FROM base AS prerelease
 COPY --from=install /temp/dev/ .
 COPY . .
 
-# Generate prisma client
 RUN cd packages/db && bunx prisma generate
 
 FROM base AS release

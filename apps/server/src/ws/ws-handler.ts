@@ -1,3 +1,14 @@
+
+
+
+
+
+
+
+
+
+
+
 import prisma from "@repo/db";
 import { ClientMessage, getChatRoomAtPosition, getMapTemplate } from "@repo/shared";
 import { getUserIdFromToken } from "../middleware/auth";
@@ -31,22 +42,21 @@ type ChatPayload = Extract<ClientMessage, { type: "chat" }>["payload"];
 type ReactionPayload = Extract<ClientMessage, { type: "reaction" }>["payload"];
 type SignalPayload = Extract<ClientMessage, { type: "webrtc-signal" }>["payload"];
 
-//what is this use case of this make socket data use case and why to even write this it does what just get the values and return them still why this
+
 export function makeSocketData(): SocketData {
   return { x: 0, y: 0 };
 }
 
-// what is this ws.send what is this send does where does it send this
+
 function send(ws: Socket, message: unknown) {
   ws.send(JSON.stringify(message));
 }
 
-//what is this from
+
 function isOneTileMove(from: { x: number; y: number }, to: MovePayload) {
-  //what does this math.abs and explain this math to be what is this math
   return Math.abs(to.x - from.x) + Math.abs(to.y - from.y) === 1;
 }
-//in this ws:socket i think it is a connection like the web socket sonnection tell what is it if not the connection
+
 export async function onMessage(ws: Socket, raw: string | Buffer) {
   let json: unknown;
 
@@ -55,7 +65,7 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
   } catch {
     return send(ws, { type: "error", message: "Invalid JSON" });
   }
- // what is this client message in this
+
   const parsed = ClientMessage.safeParse(json);
   if (!parsed.success) {
     return send(ws, { type: "error", message: "Invalid message" });
@@ -74,6 +84,7 @@ export async function onMessage(ws: Socket, raw: string | Buffer) {
       return handleSignal(ws, parsed.data.payload)
   }
 }
+
 
 async function handleJoin(ws: Socket, payload: JoinPayload) {
   if (ws.data.userId || ws.data.spaceId) {
@@ -101,18 +112,22 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
     && lastPos.x < template.dimensions.width
     && lastPos.y < template.dimensions.height;
   const spawn = isRememberedPositionValid ? lastPos : template.spawn;
-  // what is this ws.data.user id what does this does in this
+
   ws.data.userId = userId;
   ws.data.spaceId = payload.spaceId;
   ws.data.x = spawn.x;
   ws.data.y = spawn.y;
 
-  ///what doe this set useronline does in this a
+
   await setUserOnline(payload.spaceId, userId, spawn);
 
   const roomUsers = await getRoomUsers(payload.spaceId);
+
   const existingUsers = roomUsers
-  //what is this doing and i havea questioni. seen a bloack ok the code hy i am not able to read and understnad that and i know this filter loop over an arrayr and fitler thorugh adn give us an arrayr
+
+
+
+
     .filter((user) => user.userId !== userId)
     .map((user) => ({
       id: user.userId,
@@ -128,7 +143,7 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
   });
   await subscribeToSpaceEvents(payload.spaceId);
 
-  //what does this send does up here and where doe sit send ot the user or what
+
   send(ws, {
     type: "space-joined",
     payload: { userId, spawn, users: existingUsers },
@@ -142,6 +157,7 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
   broadcast(payload.spaceId, userId, message);
   await publishRoomEvent(payload.spaceId, userId, message);
 }
+
 
 async function handleMove(ws: Socket, payload: MovePayload) {
   const { spaceId, userId, x: currentX, y: currentY } = ws.data;
@@ -182,7 +198,7 @@ async function handleMove(ws: Socket, payload: MovePayload) {
   await publishRoomEvent(spaceId, userId, message);
 }
 
-// what is thsi handle signal means
+
 async function handleSignal(ws:Socket , payload:SignalPayload){
   const {spaceId , userId} = ws.data;
   if (!spaceId || !userId) {
@@ -196,6 +212,7 @@ async function handleSignal(ws:Socket , payload:SignalPayload){
   })
 
 }
+
 
 async function handleChat(ws: Socket, payload: ChatPayload) {
   const { spaceId, userId, x, y } = ws.data;
@@ -255,6 +272,7 @@ async function handleChat(ws: Socket, payload: ChatPayload) {
   }
 }
 
+
 async function handleReaction(ws: Socket, payload: ReactionPayload) {
   const { spaceId, userId } = ws.data;
   if (!spaceId || !userId) {
@@ -272,6 +290,7 @@ async function handleReaction(ws: Socket, payload: ReactionPayload) {
   broadcast(spaceId, userId, message);
   await publishRoomEvent(spaceId, userId, message);
 }
+
 
 export async function onClose(ws: Socket) {
   const { spaceId, userId } = ws.data;

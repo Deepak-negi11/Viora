@@ -50,8 +50,8 @@ export function GlobalCursorAvatar() {
       const dy = destination.y - point.y;
       const moving = Math.abs(dx) + Math.abs(dy) > 1.2 && now - lastPointerAt < 1800;
 
-      // Ease toward the pointer instead of snapping to it. The lower interpolation
-      // factor makes the avatar visibly walk across the page at a calm pace.
+
+
       point.x += dx * 0.012;
       point.y += dy * 0.012;
 

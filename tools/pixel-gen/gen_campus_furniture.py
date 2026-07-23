@@ -46,14 +46,14 @@ def sofa(name, base, light, dark, seats=3):
     ellipse(d, (5, 35, w-4, 47), COLORS["shadow"])
     box(d, (3, 6, w-4, 36), dark, o, 1, 6)
     box(d, (5, 4, w-6, 21), base, o, 1, 6)
-    # segmented padded back cushions
+
     inner = w - 18; cw = inner / seats
     for i in range(seats):
         x = 9 + i*cw
         box(d, (x, 7, x+cw-2, 21), base, dark, 1, 4)
         line(d, (x+3, 9, x+cw-5, 9), light, 2)
         ellipse(d, (x+cw/2-1, 14, x+cw/2+1, 16), dark)
-    # arms and seat cushions
+
     box(d, (1, 10, 12, 36), base, o, 1, 5)
     box(d, (w-13, 10, w-2, 36), base, o, 1, 5)
     for i in range(seats):
@@ -71,7 +71,7 @@ def tufted_chair(name, base, light, dark, direction="down"):
     img = canvas(w, h); d = draw(img); o = COLORS["outline"]
     ellipse(d, (6, h-15, w-5, h-3), COLORS["shadow"])
     if direction in ("down", "up"):
-        # high scalloped wing back and deep cushion
+
         polygon(d, [(8,25),(5,13),(11,5),(19,2),(26,5),(33,2),(41,5),(47,13),(44,35),(38,45),(13,45)], dark, o)
         box(d, (10, 9, 42, 35), base, o, 1, 10)
         polygon(d, [(13,10),(20,7),(26,11),(32,7),(39,10),(37,25),(15,25)], light, dark)
@@ -82,7 +82,7 @@ def tufted_chair(name, base, light, dark, direction="down"):
         box(d, (10, 47, 16, 53), COLORS["wood_d"], o, 1, 1); box(d, (36,47,42,53), COLORS["wood_d"], o, 1, 1)
         if direction == "up": img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
     else:
-        # side profile has a real back, arm and cushion silhouette
+
         back_x = 4 if direction == "right" else 37
         box(d, (back_x, 5, back_x+16, 43), base, o, 1, 7)
         sx = 15 if direction == "right" else 8
@@ -98,7 +98,7 @@ def tufted_chair(name, base, light, dark, direction="down"):
 def task_chair(name, base, light, dark, direction):
     img = canvas(34, 44); d = draw(img); o = COLORS["outline"]
     metal = COLORS["slate_d"]
-    # The shadow and caster base stay in world orientation for every facing.
+
     ellipse(d, (4, 35, 30, 42), COLORS["shadow"])
     if direction == "down":
         box(d, (7, 3, 27, 23), base, o, 1, 6)
@@ -129,8 +129,8 @@ def task_chair(name, base, light, dark, direction):
 
 
 def wooden_chair(name, direction):
-    # Every direction is authored on the same canvas. Rotating the old non-square
-    # sprite clipped its side views and moved the world-space shadow above the chair.
+
+
     img = canvas(44, 48); d = draw(img); o = COLORS["outline"]
     wood, wood_l, wood_d = COLORS["wood"], COLORS["wood_l"], COLORS["wood_d"]
     cream, cream_l, cream_d = COLORS["cream"], COLORS["cream_l"], COLORS["cream_d"]

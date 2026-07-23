@@ -61,7 +61,7 @@ describe("Authentication",()=>{
         const input = {
             email:"deepak@test.com",
             password:"short"
-        
+
         };
         const result = SigninSchema.safeParse(input);
         expect(result.success).toBe(false)

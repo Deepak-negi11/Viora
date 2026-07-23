@@ -24,7 +24,7 @@ export function EditProfileModal({ open, onClose, onUpdated }: EditProfileModalP
       setError(null);
       setSuccess(false);
       setEmail(getAuthEmail() || "");
-      
+
       const savedUsername = localStorage.getItem("metaverse:username") || "";
       setUsername(savedUsername);
     }

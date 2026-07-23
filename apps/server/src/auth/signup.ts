@@ -23,7 +23,8 @@ export async function handleSignup(req: Request): Promise<Response> {
       username,
       email,
       password: passwordHash,
-      // i have a question abou this like hwo do we even asign the a user admin role how
+
+
       role: type === "admin" ? "Admin" : "User",
     },
   });

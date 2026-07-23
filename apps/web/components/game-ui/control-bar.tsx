@@ -3,27 +3,27 @@
 import { useEffect, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, Smile, LogOut } from "lucide-react";
 
-// The bottom control bar — the signature Gather-style chrome.
-//
-// IMPORTANT: this is a REACT OVERLAY that sits ON TOP of the Phaser <canvas>.
-// It is NOT a game object. The world (floor/walls/avatars) is drawn by Phaser;
-// this HTML bar floats above it, exactly like WorkAdventure/Gather do.
-//
-// For now the mic/camera buttons are visual toggles (local state only). They get
-// wired to real WebRTC audio/video later (the HARD step you'll type by hand).
+
+
+
+
+
+
+
+
 type ControlBarProps = {
-  // the signed-in user's name, used for the little avatar circle (first letter)
+
   displayName?: string;
-  // called when "Leave" is pressed — the page decides where to go (e.g. back to /spaces)
+
   onLeave?: () => void;
-  // called when you pick an emoji reaction
+
   onReact?: (emoji: string) => void;
-  // real mic/camera state + toggles from the WebRTC hook (optional; falls back to local UI state)
+
   micOn?: boolean;
   camOn?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
-  // callback to save the updated display name
+
   onUpdateName?: (newName: string) => Promise<void>;
 };
 
@@ -45,25 +45,25 @@ export function ControlBar({
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(displayName);
 
-  // keep newName local state in sync with display name updates
+
   useEffect(() => {
     setNewName(displayName);
   }, [displayName]);
 
-  // prefer the real WebRTC controls when the page passes them; otherwise use local UI state
+
   const micOn = micProp ?? localMic;
   const camOn = camProp ?? localCam;
   const toggleMic = onToggleMic ?? (() => setLocalMic((v) => !v));
   const toggleCam = onToggleCam ?? (() => setLocalCam((v) => !v));
 
-  // first letter for the avatar circle, e.g. "deepak" -> "D"
+
   const initial = displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    // Full-width strip pinned to the bottom. pointer-events-none means clicks
-    // PASS THROUGH the empty areas to the Phaser canvas (so click-to-walk still works).
+
+
     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3 z-50">
-      {/* Name editor overlay modal */}
+
       {isEditingName && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs pointer-events-auto">
           <style dangerouslySetInnerHTML={{__html: `
@@ -121,9 +121,9 @@ export function ControlBar({
         </div>
       )}
 
-      {/* the actual bar re-enables pointer events so its buttons are clickable */}
+
       <div className="pointer-events-auto flex max-w-full items-center gap-1.5 border border-transparent bg-transparent px-0 py-0 shadow-none backdrop-blur-none transition-all duration-300">
-        {/* your avatar chip */}
+
         <button
           type="button"
           onClick={() => {
@@ -138,7 +138,7 @@ export function ControlBar({
 
         <div className="mx-1 h-6 w-px bg-slate-400/30" aria-hidden="true" />
 
-        {/* microphone toggle */}
+
         <ControlButton
           label={micOn ? "Mute microphone" : "Unmute microphone"}
           pressed={micOn}
@@ -148,7 +148,7 @@ export function ControlBar({
           {micOn ? <Mic size={18} /> : <MicOff size={18} />}
         </ControlButton>
 
-        {/* camera toggle */}
+
         <ControlButton
           label={camOn ? "Turn camera off" : "Turn camera on"}
           pressed={camOn}
@@ -158,7 +158,7 @@ export function ControlBar({
           {camOn ? <Video size={18} /> : <VideoOff size={18} />}
         </ControlButton>
 
-        {/* emoji reactions */}
+
         <div className="relative">
           {pickerOpen && (
             <div className="absolute bottom-13 left-1/2 flex -translate-x-1/2 gap-1 border border-slate-700/40 bg-slate-900/80 p-2 rounded-xl shadow-2xl backdrop-blur-md">
@@ -189,7 +189,7 @@ export function ControlBar({
 
         <div className="mx-1 h-6 w-px bg-slate-400/30" aria-hidden="true" />
 
-        {/* leave the space */}
+
         <button
           type="button"
           onClick={onLeave}
@@ -204,10 +204,10 @@ export function ControlBar({
   );
 }
 
-// A single round icon button used inside the bar.
-// - `pressed` drives aria-pressed (for toggles like mic/camera).
-// - `danger` tints it red when the feature is OFF (mic muted / camera off),
-//   so state is never shown by colour ALONE — the icon changes too (WCAG).
+
+
+
+
 type ControlButtonProps = {
   label: string;
   pressed?: boolean;

@@ -108,25 +108,25 @@
     piecesData.forEach(p => {
       const card = document.createElement('div');
       card.className = 'card';
-      
+
       const imgContainer = document.createElement('div');
       imgContainer.className = 'image-container';
-      
+
       const img = document.createElement('img');
       img.src = `./assets/furniture/piece_${p.id}.png`;
       img.alt = `Piece ${p.id}`;
       imgContainer.appendChild(img);
-      
+
       const name = document.createElement('div');
       name.className = 'name';
       name.textContent = `piece_${p.id}.png`;
-      
+
       const info = document.createElement('div');
       info.className = 'info';
       const wTiles = Math.round(p.width / 32);
       const hTiles = Math.round(p.height / 32);
       info.textContent = `${p.width}x${p.height}px (${wTiles}x${hTiles} tiles)`;
-      
+
       card.appendChild(imgContainer);
       card.appendChild(name);
       card.appendChild(info);

@@ -83,7 +83,7 @@ export default function SpacePage() {
 
   return (
     <div className="relative min-h-screen bg-background text-[#111827]  transition-colors duration-300">
-      {/* Background dot matrix grid */}
+
       <div className="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)]  [background-size:20px_20px]" />
 
       <Navbar />

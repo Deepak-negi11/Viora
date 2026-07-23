@@ -5,7 +5,7 @@ type TextFieldProps = {
   label: string;
 } & InputHTMLAttributes<HTMLInputElement>;
 
-// A labeled input. Any extra props (type, value, onChange...) pass through to <input>.
+
 export function TextField({ id, label, ...inputProps }: TextFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">

@@ -11,7 +11,8 @@ import { requireAuth } from "../middleware/auth";
 import { formatDimensions, parseDimensions } from "../utils/dimensions";
 import { jsonMessage } from "../utils/http";
 
-// is this even used like because i think this mithg tbe used i have some big gap in my knowledge i think like what isma thinking like this  right now is that like we are not creting a space which is prebuidl but ofr building that prebuild we might require this
+
+
 type CreateSpaceBody = {
   name?: string;
   dimensions?: string;
@@ -74,7 +75,13 @@ export async function handleCreateSpace(req: Request): Promise<Response> {
     return jsonMessage("Map not found");
   }
 
-  // explain me this map.mapelemt full thing what is even this if i try to read this like so then the map is a map which has all the elements in that map.mapelment might be a arrary in which we are using this filter to loop and then if the lement is not null then .map create a new arrayr of that elemtn
+
+
+
+
+
+
+
   const defaultElements = map.mapElements
     .filter((element) => element.elementId && element.x !== null && element.y !== null)
     .map((element) => ({
@@ -234,14 +241,15 @@ export async function handleListElements(_req: Request): Promise<Response> {
 }
 
 
-// GET /api/v1/space/:spaceId/messages — recent chat history (oldest first), capped at 50
+
 export async function handleGetMessages(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  //explainme this like of the code what does this do explain these tweo line to me what are they
+
+
   const parts = new URL(req.url).pathname.split("/");
-  const spaceId = parts[parts.length - 2] ?? ""; // ".../space/<id>/messages"
+  const spaceId = parts[parts.length - 2] ?? "";
 
   const space = await prisma.space.findUnique({
     where: { id: spaceId },

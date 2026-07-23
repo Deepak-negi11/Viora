@@ -25,11 +25,11 @@ export default function SigninPage() {
     }
   }, [router]);
 
-  //what is this for event and this <htmlformelement> and what is this event is this which we are getting as a props
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    //what is this setIsSubmitting
+
     setIsSubmitting(true);
 
     try {
@@ -40,14 +40,14 @@ export default function SigninPage() {
       router.push("/spaces");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
-      //what is this finally and this like when does this run
+
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    // why to use this main tag use case of this like the div or others
+
     <main className="grid min-h-screen place-items-center bg-[#dbe8f8] p-4 sm:p-7">
       <div className="w-full max-w-md border-2 border-[#111827] bg-[#f8fbff] p-6 shadow-[8px_8px_0_#183a8f] sm:p-8">
         <Link href="/" aria-label="Back to Viora home" className="inline-flex items-center gap-2 text-[#183a8f] transition-opacity hover:opacity-75">

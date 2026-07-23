@@ -28,7 +28,7 @@ export default function SignupPage() {
   }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    //what is this .preventDefault what does this even do
+
     event.preventDefault();
     setError("");
 

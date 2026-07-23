@@ -1,14 +1,17 @@
 import type { ServerWebSocket } from "bun";
 
-export type SocketData = {
-  userId?: string;
-  spaceId?: string;
-  x: number;
-  y: number;
-};
 
-//what is this Socket mean and what does this Server web socket mean in thsi what does it changes
-export type Socket = ServerWebSocket<SocketData>;
+
+
+
+
+
+
+
+
+
+
+
 
 type Member = {
   socket: Socket;
@@ -17,11 +20,33 @@ type Member = {
   y: number;
 };
 
-//what does this new map mena din this what doe sthis even does here 
+
+
+
+
+
+
+
+
+
 const rooms = new Map<string, Map<string, Member>>();
 
+export type SocketData = {
+  userId?: string;
+  spaceId?: string;
+  x: number;
+  y: number;
+};
+
+
+
+export type Socket = ServerWebSocket<SocketData>;
+
+
+
 export function addToRoom(spaceId: string, member: Member) {
-  //explain this line what it will do becasue i dont thing it will do naything like the rooms is a map and if we do a get space id what it wil get
+
+
   let room = rooms.get(spaceId);
 
   if (!room) {
@@ -31,6 +56,8 @@ export function addToRoom(spaceId: string, member: Member) {
 
   room.set(member.userId, member);
 }
+
+
 
 export function removeFromRoom(spaceId: string, userId: string, socket?: Socket) {
   const room = rooms.get(spaceId);
@@ -48,9 +75,12 @@ export function removeFromRoom(spaceId: string, userId: string, socket?: Socket)
   return true;
 }
 
+
 export function roomSize(spaceId: string) {
   return rooms.get(spaceId)?.size ?? 0;
 }
+
+
 
 export function othersInRoom(spaceId: string, exceptUserId: string): Member[] {
   const room = rooms.get(spaceId);
@@ -59,9 +89,13 @@ export function othersInRoom(spaceId: string, exceptUserId: string): Member[] {
   return [...room.values()].filter((member) => member.userId !== exceptUserId);
 }
 
+
 export function broadcast(spaceId: string, exceptUserId: string, message: unknown) {
   broadcastWhere(spaceId, exceptUserId, message, () => true);
 }
+
+
+
 
 export function broadcastWhere(
   spaceId: string,
@@ -75,6 +109,8 @@ export function broadcastWhere(
   }
 }
 
+
+
 export function updatePosition(spaceId: string, userId: string, x: number, y: number) {
   const member = rooms.get(spaceId)?.get(userId);
 
@@ -83,6 +119,7 @@ export function updatePosition(spaceId: string, userId: string, x: number, y: nu
     member.y = y;
   }
 }
+
 
 export function sendToUser(spaceId:string , userId:string,message:unknown){
   const member = rooms.get(spaceId)?.get(userId)
