@@ -20,7 +20,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: web
-          image: registry.digitalocean.com/viora-registry/web:1.0.1
+          image: vioraregistry.azurecr.io/web:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

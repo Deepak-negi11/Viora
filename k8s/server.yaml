@@ -20,7 +20,7 @@ spec:
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: migrate-database
-          image: registry.digitalocean.com/viora-registry/server:1.0.1
+          image: vioraregistry.azurecr.io/server:1.0.1
           imagePullPolicy: IfNotPresent
           workingDir: /usr/src/app/packages/db
           command: ["bunx", "prisma", "migrate", "deploy"]
@@ -34,7 +34,7 @@ spec:
             runAsGroup: 1000
       containers:
         - name: server
-          image: registry.digitalocean.com/viora-registry/server:1.0.1
+          image: vioraregistry.azurecr.io/server:1.0.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
