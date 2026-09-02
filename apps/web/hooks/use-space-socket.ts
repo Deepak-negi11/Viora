@@ -22,6 +22,8 @@ export type ChatEntry = {
   roomName?: string;
 };
 export type Reaction = { id: string; userId: string; emoji: string; at: number };
+export type AgentActivityEntry = { text: string; state: "cooking" | "done"; at: number };
+export type AgentActivities = Record<string, AgentActivityEntry>;
 
 export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
   const socketRef = useRef<WebSocket | null>(null);
@@ -33,6 +35,7 @@ export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
   const [generalMessages, setGeneralMessages] = useState<ChatEntry[]>([]);
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatEntry[]>>({});
   const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [agentActivities, setAgentActivities] = useState<AgentActivities>({});
   const signalHandlerRef = useRef<((fromUserId: string, signal: unknown) => void) | null>(null);
   const loadedRoomsRef = useRef<Set<string>>(new Set());
 
@@ -82,6 +85,7 @@ export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
           setOthers(Object.fromEntries(
             message.payload.users.map((user) => [user.id, { x: user.x, y: user.y }]),
           ));
+          setAgentActivities(message.payload.agentActivities ?? {});
           setStatus("joined");
           captureEvent("space_entered");
 
@@ -102,9 +106,16 @@ export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
           setSelf(message.payload);
           break;
         case "user-left": {
+          const leftId = message.payload.userId;
           setOthers((current) => {
             const next = { ...current };
-            delete next[message.payload.userId];
+            delete next[leftId];
+            return next;
+          });
+          setAgentActivities((current) => {
+            if (!(leftId in current)) return current;
+            const next = { ...current };
+            delete next[leftId];
             return next;
           });
           break;
@@ -133,6 +144,19 @@ export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
             ...current.filter((reaction) => Date.now() - reaction.at < 6000),
             { id: `${userId}-${at}`, userId, emoji, at },
           ]);
+          break;
+        }
+        case "agent-activity": {
+          const { userId, text, state, at } = message.payload;
+          setAgentActivities((current) => {
+            if (state === "done") {
+              if (!(userId in current)) return current;
+              const next = { ...current };
+              delete next[userId];
+              return next;
+            }
+            return { ...current, [userId]: { text, state, at } };
+          });
           break;
         }
         case "webrtc-signal":
@@ -250,6 +274,7 @@ export function useSpaceSocket(spaceId: string, mapTemplate: MapTemplateId) {
     sendChat,
     reactions,
     sendReaction,
+    agentActivities,
     sendSignal,
     registerSignalHandler,
   };

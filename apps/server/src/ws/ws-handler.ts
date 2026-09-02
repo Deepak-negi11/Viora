@@ -22,8 +22,12 @@ import {
   updatePosition,
 } from "./room-manager";
 import {
+  clearAgentActivity,
+  clearCurrentSpace,
+  getAgentActivities,
   getRoomUsers,
   removeUser,
+  setCurrentSpace,
   setUserOnline,
   setUserPosition,
   getUserPosition,
@@ -120,8 +124,10 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
 
 
   await setUserOnline(payload.spaceId, userId, spawn);
+  await setCurrentSpace(userId, payload.spaceId);
 
   const roomUsers = await getRoomUsers(payload.spaceId);
+  const agentActivities = await getAgentActivities(payload.spaceId);
 
   const existingUsers = roomUsers
 
@@ -146,7 +152,12 @@ async function handleJoin(ws: Socket, payload: JoinPayload) {
 
   send(ws, {
     type: "space-joined",
-    payload: { userId, spawn, users: existingUsers },
+    payload: {
+      userId,
+      spawn,
+      users: existingUsers,
+      agentActivities: Object.keys(agentActivities).length > 0 ? agentActivities : undefined,
+    },
   });
 
   const message = {
@@ -300,6 +311,8 @@ export async function onClose(ws: Socket) {
   if (!removed) return;
 
   await removeUser(spaceId, userId);
+  await clearCurrentSpace(userId);
+  await clearAgentActivity(spaceId, userId);
 
   const message = {
     type: "user-left",

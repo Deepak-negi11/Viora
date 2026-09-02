@@ -4,7 +4,7 @@ import { useEffect , useRef } from "react";
 import Phaser from "phaser";
 import { ArenaScene } from "./scenes/arena-scene";
 import type { RefObject } from "react";
-import type { Others,Position,Reaction } from "../../hooks/use-space-socket";
+import type { Others,Position,Reaction,AgentActivities } from "../../hooks/use-space-socket";
 import type { MapTemplateId } from "@repo/shared";
 
 type PhaserGameProps ={
@@ -18,10 +18,11 @@ type PhaserGameProps ={
     nearbyRef?:RefObject<Set<string>>;
 
     reactionsRef?:RefObject<Reaction[]>;
+    activitiesRef?:RefObject<AgentActivities>;
     selfId?: string | null;
 }
 
-export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef,selfId}:PhaserGameProps){
+export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef,activitiesRef,selfId}:PhaserGameProps){
 
 
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -58,6 +59,7 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
                     game.registry.set("namesRef" , namesRef);
                     game.registry.set("nearbyRef" , nearbyRef);
                     game.registry.set("reactionsRef" , reactionsRef);
+                    game.registry.set("activitiesRef" , activitiesRef);
                 },
             },
 
@@ -70,7 +72,7 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
         };
 
 
-    },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef]);
+    },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef, activitiesRef]);
 
     useEffect(() => {
         if (gameRef.current) {

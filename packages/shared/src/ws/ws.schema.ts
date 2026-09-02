@@ -6,6 +6,14 @@ const PositionSchema = z.object({
   y: z.number().int().nonnegative(),
 });
 
+export const AgentActivityState = z.enum(["cooking", "done"]);
+
+export const AgentActivityInfo = z.object({
+  text: z.string(),
+  state: AgentActivityState,
+  at: z.number(),
+});
+
 
 export const JoinMessage = z.object({
   type: z.literal("join"),
@@ -33,6 +41,7 @@ export const SpaceJoinedMessage = z.object({
         y: z.number(),
       }),
     ),
+    agentActivities: z.record(z.string(), AgentActivityInfo).optional(),
   }),
 });
 
@@ -98,6 +107,17 @@ export const ReactionBroadcastMessage = z.object({
 });
 
 
+export const AgentActivityBroadcastMessage = z.object({
+  type: z.literal("agent-activity"),
+  payload: z.object({
+    userId: z.string(),
+    text: z.string(),
+    state: AgentActivityState,
+    at: z.number(),
+  }),
+});
+
+
 export const RtcSignal = z.object({
   kind: z.enum(["offer", "answer", "candidate"]),
   sdp: z.string().optional(),
@@ -126,6 +146,7 @@ export const ServerMessage = z.discriminatedUnion("type", [
   ErrorMessage,
   ChatBroadcastMessage,
   ReactionBroadcastMessage,
+  AgentActivityBroadcastMessage,
   WebRtcSignalBroadcast,
 ]);
 
@@ -171,5 +192,8 @@ export type ChatMessage = z.infer<typeof ChatMessage>;
 export type ChatBroadcastMessage = z.infer<typeof ChatBroadcastMessage>;
 export type ReactionMessage = z.infer<typeof ReactionMessage>;
 export type ReactionBroadcastMessage = z.infer<typeof ReactionBroadcastMessage>;
+export type AgentActivityState = z.infer<typeof AgentActivityState>;
+export type AgentActivityInfo = z.infer<typeof AgentActivityInfo>;
+export type AgentActivityBroadcastMessage = z.infer<typeof AgentActivityBroadcastMessage>;
 export type WebRtcSignalMessage = z.infer<typeof WebRtcSignalMessage>;
 export type WebRtcSignalBroadcast = z.infer<typeof WebRtcSignalBroadcast>;

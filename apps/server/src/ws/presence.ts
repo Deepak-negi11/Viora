@@ -123,3 +123,65 @@ export async function removeUser(spaceId: string, userId: string) {
 
   await redis.send("SREM", [onlineKey(spaceId), userId]);
 }
+
+
+
+
+
+function currentSpaceKey(userId: string): string {
+  return `user:${userId}:currentSpace`;
+}
+
+export async function setCurrentSpace(userId: string, spaceId: string) {
+  await redis.send("SET", [currentSpaceKey(userId), spaceId]);
+}
+
+export async function getCurrentSpace(userId: string): Promise<string | null> {
+  const value = (await redis.send("GET", [currentSpaceKey(userId)])) as string | null;
+  return value ?? null;
+}
+
+export async function clearCurrentSpace(userId: string) {
+  await redis.send("DEL", [currentSpaceKey(userId)]);
+}
+
+
+
+
+
+export type AgentActivity = { text: string; state: "cooking" | "done"; at: number };
+
+function activityKey(spaceId: string): string {
+  return `space:${spaceId}:activity`;
+}
+
+export async function setAgentActivity(spaceId: string, userId: string, activity: AgentActivity) {
+  await redis.hmset(activityKey(spaceId), [userId, JSON.stringify(activity)]);
+}
+
+export async function clearAgentActivity(spaceId: string, userId: string) {
+  await redis.send("HDEL", [activityKey(spaceId), userId]);
+}
+
+export async function getAgentActivities(spaceId: string): Promise<Record<string, AgentActivity>> {
+  const values = (await redis.send("HGETALL", [activityKey(spaceId)])) as string[] | null;
+  const activities: Record<string, AgentActivity> = {};
+  if (!values || values.length === 0) return activities;
+
+  for (let i = 0; i + 1 < values.length; i += 2) {
+    const userId = values[i];
+    const raw = values[i + 1];
+    if (!userId || !raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw) as AgentActivity;
+      if (parsed && typeof parsed.text === "string" && typeof parsed.at === "number") {
+        activities[userId] = parsed;
+      }
+    } catch {
+
+    }
+  }
+
+  return activities;
+}

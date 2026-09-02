@@ -31,6 +31,9 @@ export class ArenaScene extends Phaser.Scene{
     private reactionsRef?: {current:{id:string;userId:string;emoji:string;at:number}[]}
     private shownReactions = new Set<string>();
 
+    private activitiesRef?: {current:Record<string,{text:string;state:"cooking"|"done";at:number}>}
+    private agentBadges: Record<string, Phaser.GameObjects.Container> = {};
+
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
 
@@ -130,6 +133,7 @@ export class ArenaScene extends Phaser.Scene{
         this.namesRef = this.registry.get("namesRef");
         this.nearbyRef = this.registry.get("nearbyRef");
         this.reactionsRef = this.registry.get("reactionsRef");
+        this.activitiesRef = this.registry.get("activitiesRef");
 
 
         const initialPos = this.selfRef?.current;
@@ -812,6 +816,7 @@ export class ArenaScene extends Phaser.Scene{
 
 
         this.spawnReactions();
+        this.updateAgentBadges();
 
         const currentTileKey = this.tileX + "," + this.tileY;
         const chairDir = this.chairMap[currentTileKey];
@@ -965,6 +970,8 @@ export class ArenaScene extends Phaser.Scene{
                 this.otherSprites[id]?.destroy();
                 this.otherTags[id]?.destroy();
                 this.otherShadows[id]?.destroy();
+                this.agentBadges[id]?.destroy();
+                delete this.agentBadges[id];
                 delete this.otherSprites[id];
                 delete this.otherTags[id];
                 delete this.otherTagNames[id];
@@ -972,6 +979,62 @@ export class ArenaScene extends Phaser.Scene{
                 delete this.otherTiles[id];
             }
         }
+    }
+
+    private updateAgentBadges() {
+        const activities = this.activitiesRef?.current;
+        if (!activities) return;
+
+        const selfId = this.registry.get("selfId") as string | null;
+
+        for (const userId of Object.keys(activities)) {
+            if (activities[userId]?.state !== "cooking") continue;
+            if (!this.agentBadges[userId]) {
+                this.agentBadges[userId] = this.makeAgentBadge();
+            }
+        }
+
+        for (const userId of Object.keys(this.agentBadges)) {
+            if (!activities[userId] || activities[userId]?.state !== "cooking") {
+                this.agentBadges[userId]?.destroy();
+                delete this.agentBadges[userId];
+            }
+        }
+
+        for (const userId of Object.keys(this.agentBadges)) {
+            const badge = this.agentBadges[userId];
+            if (!badge) continue;
+            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
+            if (!sprite) continue;
+            badge.setPosition(sprite.x, sprite.y - 60);
+            badge.setDepth(sprite.depth + 500);
+            badge.setAlpha(sprite.alpha);
+        }
+    }
+
+    private makeAgentBadge() {
+        const label = this.add.text(0, 0, "🧑‍🍳", {
+            fontSize: "16px",
+        }).setOrigin(0.5, 0.5);
+
+        const bubble = this.add.graphics();
+        bubble.fillStyle(0xff7a1a, 0.95);
+        bubble.fillRoundedRect(-13, -13, 26, 26, 13);
+        bubble.lineStyle(2, 0xffffff, 0.9);
+        bubble.strokeRoundedRect(-13, -13, 26, 26, 13);
+
+        const container = this.add.container(0, 0, [bubble, label]).setDepth(10001);
+
+        this.tweens.add({
+            targets: label,
+            y: "-=2",
+            duration: 600,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+        });
+
+        return container;
     }
 
     private move(dx:number , dy:number){

@@ -23,6 +23,7 @@ import {
 import { makeSocketData, onMessage, onClose } from "./src/ws/ws-handler";
 import type { SocketData } from "./src/ws/room-manager";
 import { stopAllRoomEventSubscriptions } from "./src/ws/pubsub";
+import { handleAgentActivity } from "./src/agent/agent-activity";
 
 let activeServers = 0;
 
@@ -132,6 +133,11 @@ export function startServer(port: number) {
         OPTIONS: handleCorsPreflight,
       },
       "/api/v1/elements": { GET: withCors(handleListElements), OPTIONS: handleCorsPreflight },
+
+      "/api/v1/agent-activity": {
+        POST: withCors(handleAgentActivity),
+        OPTIONS: handleCorsPreflight,
+      },
     },
     fetch(req, server) {
 
