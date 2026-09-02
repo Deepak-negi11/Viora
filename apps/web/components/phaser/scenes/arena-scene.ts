@@ -33,6 +33,7 @@ export class ArenaScene extends Phaser.Scene{
 
     private activitiesRef?: {current:Record<string,{text:string;state:"cooking"|"done";at:number}>}
     private playerClickRef?: {current:((userId:string|null)=>void)|null}
+    private agentPets: Record<string, Phaser.GameObjects.Sprite> = {};
 
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
@@ -144,6 +145,15 @@ export class ArenaScene extends Phaser.Scene{
         }
 
         this.makeTextures();
+        this.makeClaudePetTextures();
+        if (!this.anims.exists("claude-pet-walk")) {
+            this.anims.create({
+                key: "claude-pet-walk",
+                frames: [{ key: "claude-pet-0" }, { key: "claude-pet-1" }],
+                frameRate: 5,
+                repeat: -1,
+            });
+        }
 
 
 
@@ -824,6 +834,7 @@ export class ArenaScene extends Phaser.Scene{
 
 
         this.spawnReactions();
+        this.updateAgentPets();
 
         const currentTileKey = this.tileX + "," + this.tileY;
         const chairDir = this.chairMap[currentTileKey];
@@ -1259,8 +1270,77 @@ export class ArenaScene extends Phaser.Scene{
 
 
 
-    private makeNameTag(label: string, isSelf: boolean, isSitting: boolean = false, isCooking: boolean = false) {
+    // Recreates the Claude Code terminal mascot (orange pixel critter) as two
+    // 14x12 canvas textures — frame B alternates lifted legs for the walk cycle.
+    private makeClaudePetTextures() {
+        const BODY = 0xe8896b;
+        const EYE = 0x141414;
+        const W = 14;
+        const H = 12;
 
+        const draw = (g: Phaser.GameObjects.Graphics, step: number) => {
+            const bob = step === 1 ? 1 : 0;
+            g.fillStyle(BODY, 1);
+            g.fillRect(3, 1 + bob, 8, 8);
+            g.fillRect(0, 3 + bob, 3, 3);
+            g.fillRect(11, 3 + bob, 3, 3);
+
+            g.fillStyle(EYE, 1);
+            g.fillRect(4, 3 + bob, 2, 2);
+            g.fillRect(8, 3 + bob, 2, 2);
+
+            g.fillStyle(BODY, 1);
+            [4, 6, 8, 10].forEach((lx, i) => {
+                const lifted = step === 1 ? i % 2 === 0 : i % 2 === 1;
+                g.fillRect(lx, 9, 1, lifted ? 2 : 3);
+            });
+        };
+
+        const frameA = this.add.graphics();
+        draw(frameA, 0);
+        frameA.generateTexture("claude-pet-0", W, H);
+        frameA.destroy();
+
+        const frameB = this.add.graphics();
+        draw(frameB, 1);
+        frameB.generateTexture("claude-pet-1", W, H);
+        frameB.destroy();
+    }
+
+    // The Claude pet scurries alongside a player's avatar while their agent
+    // reports activity, and vanishes when the agent goes idle.
+    private updateAgentPets() {
+        const activities = this.activitiesRef?.current;
+        if (!activities) return;
+        const selfId = this.registry.get("selfId") as string | null;
+
+        for (const [userId, activity] of Object.entries(activities)) {
+            if (activity?.state !== "cooking") continue;
+            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
+            if (!sprite) continue;
+
+            if (!this.agentPets[userId]) {
+                const pet = this.add.sprite(0, 0, "claude-pet-0").setScale(2);
+                pet.play("claude-pet-walk");
+                this.agentPets[userId] = pet;
+            }
+            const pet = this.agentPets[userId];
+            pet.setPosition(sprite.x + 26, sprite.y + 16);
+            pet.setDepth(sprite.depth - 1);
+            pet.setAlpha(sprite.alpha);
+        }
+
+        for (const userId of Object.keys(this.agentPets)) {
+            const stillCooking = activities[userId]?.state === "cooking";
+            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
+            if (!stillCooking || !sprite) {
+                this.agentPets[userId]?.destroy();
+                delete this.agentPets[userId];
+            }
+        }
+    }
+
+    private makeNameTag(label: string, isSelf: boolean, isSitting: boolean = false, isCooking: boolean = false) {
         const text = this.add.text(0, 0, label, {
             fontFamily: "sans-serif",
             fontSize: "12px",
