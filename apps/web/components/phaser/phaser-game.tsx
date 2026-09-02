@@ -19,10 +19,11 @@ type PhaserGameProps ={
 
     reactionsRef?:RefObject<Reaction[]>;
     activitiesRef?:RefObject<AgentActivities>;
+    playerClickRef?:RefObject<((userId:string|null)=>void)|null>;
     selfId?: string | null;
 }
 
-export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef,activitiesRef,selfId}:PhaserGameProps){
+export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,moveRef,namesRef,nearbyRef,reactionsRef,activitiesRef,playerClickRef,selfId}:PhaserGameProps){
 
 
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -60,6 +61,7 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
                     game.registry.set("nearbyRef" , nearbyRef);
                     game.registry.set("reactionsRef" , reactionsRef);
                     game.registry.set("activitiesRef" , activitiesRef);
+                    game.registry.set("playerClickRef" , playerClickRef);
                 },
             },
 
@@ -72,7 +74,7 @@ export function PhaserGame({mapTemplate = "classic-office",othersRef,selfRef,mov
         };
 
 
-    },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef, activitiesRef]);
+    },[mapTemplate, othersRef, selfRef, moveRef, namesRef, nearbyRef, reactionsRef, activitiesRef, playerClickRef]);
 
     useEffect(() => {
         if (gameRef.current) {

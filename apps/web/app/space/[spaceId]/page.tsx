@@ -171,6 +171,10 @@ function LiveSpace({
   namesRef.current = names;
   const fetchedIds = useRef<Set<string>>(new Set());
 
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const playerClickRef = useRef<((userId: string | null) => void) | null>(null);
+  playerClickRef.current = (userId: string | null) => setSelectedPlayerId(userId);
+
   const nearbyIds = useMemo(() => {
     const ids = new Set<string>();
     for (const [id, position] of Object.entries(others)) {
@@ -261,10 +265,19 @@ function LiveSpace({
         nearbyRef={nearbyRef}
         reactionsRef={reactionsRef}
         activitiesRef={activitiesRef}
+        playerClickRef={playerClickRef}
         selfId={selfId}
       />
       <PresenceBar people={people} />
-      <AgentFeed agentActivities={agentActivities} names={names} selfId={selfId} />
+      <AgentFeed agentActivities={agentActivities} names={names} selfId={selfId} onSelect={(userId) => setSelectedPlayerId(userId)} />
+      {selectedPlayerId && (
+        <PlayerAgentCard
+          userId={selectedPlayerId}
+          activity={agentActivities[selectedPlayerId]}
+          name={(selectedPlayerId === selfId ? (names[selfId] ?? "You") : (names[selectedPlayerId] ?? selectedPlayerId.slice(0, 5)))}
+          onClose={() => setSelectedPlayerId(null)}
+        />
+      )}
       <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
       <ScreenLayer
         localScreenStream={media.screenStream}
@@ -301,6 +314,68 @@ function SpaceLoading({ error }: { error: string | null }) {
       <div className="border-2 border-[#111827] bg-[#f8fbff] p-6 text-center shadow-[5px_5px_0_#183a8f]">
         <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#183a8f]">JOINING SPACE</p>
         <p className="mt-2 text-lg font-bold tracking-[-0.03em]">{error ?? "Loading your space…"}</p>
+      </div>
+    </div>
+  );
+}
+
+function PlayerAgentCard({
+  userId,
+  activity,
+  name,
+  onClose,
+}: {
+  userId: string;
+  activity: { text: string; state: "cooking" | "done"; at: number } | undefined;
+  name: string;
+  onClose: () => void;
+}) {
+  const isCooking = activity?.state === "cooking";
+
+  return (
+    <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-md">
+      <div className="flex items-start gap-3 p-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
+          {name.charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-semibold text-white">{name}</span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="-mr-1 -mt-1 cursor-pointer rounded p-1 text-slate-500 transition hover:text-white"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {isCooking && activity ? (
+            <>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-orange-400">
+                  Agent working · Claude Code
+                </span>
+              </div>
+              <p className="mt-2 break-words rounded-lg border border-white/5 bg-white/[0.04] p-2.5 font-mono text-[11px] leading-relaxed text-emerald-300/90">
+                {activity.text}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-[11px] leading-4 text-slate-400">
+              Not running an agent right now.
+            </p>
+          )}
+          {isCooking && activity && (
+            <p className="mt-2 text-[9px] uppercase tracking-wider text-slate-600">
+              id {userId.slice(0, 8)} · updated{" "}
+              {Math.max(0, Math.floor((Date.now() - activity.at) / 1000))}s ago
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

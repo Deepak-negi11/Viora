@@ -32,7 +32,7 @@ export class ArenaScene extends Phaser.Scene{
     private shownReactions = new Set<string>();
 
     private activitiesRef?: {current:Record<string,{text:string;state:"cooking"|"done";at:number}>}
-    private agentBadges: Record<string, Phaser.GameObjects.Container> = {};
+    private playerClickRef?: {current:((userId:string|null)=>void)|null}
 
     private otherTagNames: Record<string, string> = {};
     private selfTagName = "";
@@ -134,6 +134,7 @@ export class ArenaScene extends Phaser.Scene{
         this.nearbyRef = this.registry.get("nearbyRef");
         this.reactionsRef = this.registry.get("reactionsRef");
         this.activitiesRef = this.registry.get("activitiesRef");
+        this.playerClickRef = this.registry.get("playerClickRef");
 
 
         const initialPos = this.selfRef?.current;
@@ -473,6 +474,12 @@ export class ArenaScene extends Phaser.Scene{
 
         this.player = this.add.sprite(px, py, "adam", 0);
         this.player.setScale(2);
+        this.player.setInteractive({ cursor: "pointer" });
+        this.player.on("pointerdown", (_pointer: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+            const selfId = this.registry.get("selfId") as string | null;
+            this.playerClickRef?.current?.(selfId);
+        });
 
         this.playerShadow = this.add.ellipse(px, py + 26, 26, 10, 0x000000, 0.25);
 
@@ -516,6 +523,7 @@ export class ArenaScene extends Phaser.Scene{
 
 
         this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
+            this.playerClickRef?.current?.(null);
             const tx = Phaser.Math.Clamp(Math.floor(pointer.worldX / TILE), 0, this.maxTileX);
             const ty = Phaser.Math.Clamp(Math.floor(pointer.worldY / TILE), 0, this.maxTileY);
             this.path = this.findPath(this.tileX, this.tileY, tx, ty);
@@ -816,7 +824,6 @@ export class ArenaScene extends Phaser.Scene{
 
 
         this.spawnReactions();
-        this.updateAgentBadges();
 
         const currentTileKey = this.tileX + "," + this.tileY;
         const chairDir = this.chairMap[currentTileKey];
@@ -852,10 +859,11 @@ export class ArenaScene extends Phaser.Scene{
         const selfId = this.registry.get("selfId");
         const selfNameRaw = selfId ? (this.namesRef?.current?.[selfId] ?? "You") : "You";
         const selfName = selfNameRaw.length > 20 ? selfNameRaw.slice(0, 20) + "..." : selfNameRaw;
-        const selfTagState = `${selfName}:${isSelfSitting ? "sitting" : "standing"}`;
+        const isSelfCooking = !!(selfId && this.activitiesRef?.current?.[selfId]?.state === "cooking");
+        const selfTagState = `${selfName}:${isSelfSitting ? "sitting" : "standing"}:${isSelfCooking ? "cooking" : "idle"}`;
         if (this.selfTagName !== selfTagState) {
             this.nameTag?.destroy();
-            this.nameTag = this.makeNameTag(selfName, true, isSelfSitting);
+            this.nameTag = this.makeNameTag(selfName, true, isSelfSitting, isSelfCooking);
             this.selfTagName = selfTagState;
         }
         this.nameTag.setPosition(this.player.x, this.player.y - 38);
@@ -873,13 +881,19 @@ export class ArenaScene extends Phaser.Scene{
             if (!sprite) {
 
                 sprite = this.add.sprite(px, py, "adam", 18).setScale(2);
+                sprite.setInteractive({ cursor: "pointer" });
+                sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
+                    event.stopPropagation();
+                    this.playerClickRef?.current?.(id);
+                });
                 this.otherSprites[id] = sprite;
                 this.otherTiles[id] = { x: p.x, y: p.y };
                 this.otherShadows[id] = this.add.ellipse(px, py, 26, 10, 0x000000, 0.25);
 
                 const startName = this.namesRef?.current?.[id] ?? id.slice(0, 5);
-                this.otherTags[id] = this.makeNameTag(startName, false, false);
-                this.otherTagNames[id] = `${startName}:standing`;
+                const startCooking = this.activitiesRef?.current?.[id]?.state === "cooking";
+                this.otherTags[id] = this.makeNameTag(startName, false, false, startCooking);
+                this.otherTagNames[id] = `${startName}:standing:${startCooking ? "cooking" : "idle"}`;
             } else {
                 const last = this.otherTiles[id];
                 if (last && (last.x !== p.x || last.y !== p.y)) {
@@ -950,11 +964,12 @@ export class ArenaScene extends Phaser.Scene{
 
             const realName = this.namesRef?.current?.[id];
             const baseName = realName || id.slice(0, 5);
-            const tagState = `${baseName}:${isOtherSitting ? "sitting" : "standing"}`;
+            const isOtherCooking = this.activitiesRef?.current?.[id]?.state === "cooking";
+            const tagState = `${baseName}:${isOtherSitting ? "sitting" : "standing"}:${isOtherCooking ? "cooking" : "idle"}`;
 
             if (this.otherTagNames[id] !== tagState) {
                 this.otherTags[id]?.destroy();
-                this.otherTags[id] = this.makeNameTag(baseName, false, isOtherSitting);
+                this.otherTags[id] = this.makeNameTag(baseName, false, isOtherSitting, isOtherCooking);
                 this.otherTagNames[id] = tagState;
             }
             const tag = this.otherTags[id];
@@ -970,8 +985,6 @@ export class ArenaScene extends Phaser.Scene{
                 this.otherSprites[id]?.destroy();
                 this.otherTags[id]?.destroy();
                 this.otherShadows[id]?.destroy();
-                this.agentBadges[id]?.destroy();
-                delete this.agentBadges[id];
                 delete this.otherSprites[id];
                 delete this.otherTags[id];
                 delete this.otherTagNames[id];
@@ -979,62 +992,6 @@ export class ArenaScene extends Phaser.Scene{
                 delete this.otherTiles[id];
             }
         }
-    }
-
-    private updateAgentBadges() {
-        const activities = this.activitiesRef?.current;
-        if (!activities) return;
-
-        const selfId = this.registry.get("selfId") as string | null;
-
-        for (const userId of Object.keys(activities)) {
-            if (activities[userId]?.state !== "cooking") continue;
-            if (!this.agentBadges[userId]) {
-                this.agentBadges[userId] = this.makeAgentBadge();
-            }
-        }
-
-        for (const userId of Object.keys(this.agentBadges)) {
-            if (!activities[userId] || activities[userId]?.state !== "cooking") {
-                this.agentBadges[userId]?.destroy();
-                delete this.agentBadges[userId];
-            }
-        }
-
-        for (const userId of Object.keys(this.agentBadges)) {
-            const badge = this.agentBadges[userId];
-            if (!badge) continue;
-            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
-            if (!sprite) continue;
-            badge.setPosition(sprite.x, sprite.y - 60);
-            badge.setDepth(sprite.depth + 500);
-            badge.setAlpha(sprite.alpha);
-        }
-    }
-
-    private makeAgentBadge() {
-        const label = this.add.text(0, 0, "🧑‍🍳", {
-            fontSize: "16px",
-        }).setOrigin(0.5, 0.5);
-
-        const bubble = this.add.graphics();
-        bubble.fillStyle(0xff7a1a, 0.95);
-        bubble.fillRoundedRect(-13, -13, 26, 26, 13);
-        bubble.lineStyle(2, 0xffffff, 0.9);
-        bubble.strokeRoundedRect(-13, -13, 26, 26, 13);
-
-        const container = this.add.container(0, 0, [bubble, label]).setDepth(10001);
-
-        this.tweens.add({
-            targets: label,
-            y: "-=2",
-            duration: 600,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-        });
-
-        return container;
     }
 
     private move(dx:number , dy:number){
@@ -1302,7 +1259,7 @@ export class ArenaScene extends Phaser.Scene{
 
 
 
-    private makeNameTag(label: string, isSelf: boolean, isSitting: boolean = false) {
+    private makeNameTag(label: string, isSelf: boolean, isSitting: boolean = false, isCooking: boolean = false) {
 
         const text = this.add.text(0, 0, label, {
             fontFamily: "sans-serif",
@@ -1332,7 +1289,7 @@ export class ArenaScene extends Phaser.Scene{
 
 
         const dot = this.add.graphics();
-        dot.fillStyle(isSitting ? 0xf59e0b : 0x22c55e, 1);
+        dot.fillStyle(isCooking ? 0xff7a1a : (isSitting ? 0xf59e0b : 0x22c55e), 1);
         dot.fillCircle(dotX, 0, dotR);
 
 
