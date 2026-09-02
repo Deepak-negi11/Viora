@@ -37,7 +37,6 @@ import { useLocalMedia, type LocalMediaController } from "../../../hooks/use-loc
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
-import { AgentFeed } from "../../../components/game-ui/agent-feed";
 import { VideoLayer, ScreenLayer } from "../../../components/game-ui/video-tile";
 import { PrejoinScreen } from "../../../components/game-ui/prejoin-screen";
 import { getSpace, getUsersMetadata } from "../../../lib/space-api";
@@ -269,7 +268,6 @@ function LiveSpace({
         selfId={selfId}
       />
       <PresenceBar people={people} />
-      <AgentFeed agentActivities={agentActivities} names={names} selfId={selfId} onSelect={(userId) => setSelectedPlayerId(userId)} />
       {selectedPlayerId && (
         <PlayerAgentCard
           userId={selectedPlayerId}
@@ -333,19 +331,19 @@ function PlayerAgentCard({
   const isCooking = activity?.state === "cooking";
 
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-md">
+    <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur-md">
       <div className="flex items-start gap-3 p-4">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
           {name.charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-semibold text-white">{name}</span>
+            <span className="truncate text-sm font-semibold text-slate-800">{name}</span>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="-mr-1 -mt-1 cursor-pointer rounded p-1 text-slate-500 transition hover:text-white"
+              className="-mr-1 -mt-1 cursor-pointer rounded p-1 text-slate-400 transition hover:text-slate-700"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -356,21 +354,21 @@ function PlayerAgentCard({
             <>
               <div className="mt-1 flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
-                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-orange-400">
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-orange-600">
                   Agent working · Claude Code
                 </span>
               </div>
-              <p className="mt-2 break-words rounded-lg border border-white/5 bg-white/[0.04] p-2.5 font-mono text-[11px] leading-relaxed text-emerald-300/90">
+              <p className="mt-2 break-words rounded-lg border border-slate-100 bg-slate-50 p-2.5 font-mono text-[11px] leading-relaxed text-emerald-700">
                 {activity.text}
               </p>
             </>
           ) : (
-            <p className="mt-1 text-[11px] leading-4 text-slate-400">
+            <p className="mt-1 text-[11px] leading-4 text-slate-500">
               Not running an agent right now.
             </p>
           )}
           {isCooking && activity && (
-            <p className="mt-2 text-[9px] uppercase tracking-wider text-slate-600">
+            <p className="mt-2 text-[9px] uppercase tracking-wider text-slate-400">
               id {userId.slice(0, 8)} · updated{" "}
               {Math.max(0, Math.floor((Date.now() - activity.at) / 1000))}s ago
             </p>

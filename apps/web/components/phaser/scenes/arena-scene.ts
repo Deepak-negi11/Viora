@@ -1307,17 +1307,21 @@ export class ArenaScene extends Phaser.Scene{
         frameB.destroy();
     }
 
-    // The Claude pet scurries alongside a player's avatar while their agent
-    // reports activity, and vanishes when the agent goes idle.
+    // The Claude pet hovers above a player's head while their agent reports
+    // activity. Your own pet is always visible; other players' pets appear
+    // only when they are close to you.
     private updateAgentPets() {
         const activities = this.activitiesRef?.current;
         if (!activities) return;
         const selfId = this.registry.get("selfId") as string | null;
+        const nearby = this.nearbyRef?.current;
 
         for (const [userId, activity] of Object.entries(activities)) {
             if (activity?.state !== "cooking") continue;
-            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
+            const isSelf = userId === selfId;
+            const sprite = isSelf ? this.player : this.otherSprites[userId];
             if (!sprite) continue;
+            if (!isSelf && !(nearby?.has(userId) ?? false)) continue;
 
             if (!this.agentPets[userId]) {
                 const pet = this.add.sprite(0, 0, "claude-pet-0").setScale(2);
@@ -1325,15 +1329,17 @@ export class ArenaScene extends Phaser.Scene{
                 this.agentPets[userId] = pet;
             }
             const pet = this.agentPets[userId];
-            pet.setPosition(sprite.x + 26, sprite.y + 16);
-            pet.setDepth(sprite.depth - 1);
+            pet.setPosition(sprite.x, sprite.y - 62);
+            pet.setDepth(10001);
             pet.setAlpha(sprite.alpha);
         }
 
         for (const userId of Object.keys(this.agentPets)) {
             const stillCooking = activities[userId]?.state === "cooking";
-            const sprite = userId === selfId ? this.player : this.otherSprites[userId];
-            if (!stillCooking || !sprite) {
+            const isSelf = userId === selfId;
+            const sprite = isSelf ? this.player : this.otherSprites[userId];
+            const isNear = isSelf || (nearby?.has(userId) ?? false);
+            if (!stillCooking || !sprite || !isNear) {
                 this.agentPets[userId]?.destroy();
                 delete this.agentPets[userId];
             }
