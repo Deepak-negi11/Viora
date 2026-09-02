@@ -21,10 +21,13 @@ type Params = {
   selfId: string | null;
   nearbyIds: Set<string>;
   localStream: MediaStream | null;
+  screenStream: MediaStream | null;
   micOn: boolean;
   camOn: boolean;
+  screenOn: boolean;
   toggleMic: () => void | Promise<void>;
   toggleCam: () => void | Promise<void>;
+  toggleScreen: () => void | Promise<void>;
   sendSignal: (targetUserId: string, signal: Signal) => void;
   registerSignalHandler: (fn: (fromUserId: string, signal: unknown) => void) => void;
 };
@@ -37,20 +40,28 @@ export function useProximityVideo({
   selfId,
   nearbyIds,
   localStream,
+  screenStream,
   micOn,
   camOn,
+  screenOn,
   toggleMic,
   toggleCam,
+  toggleScreen,
   sendSignal,
   registerSignalHandler,
 }: Params) {
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Record<string, MediaStream>>({});
   const localStreamRef = useRef(localStream);
+  const screenStreamRef = useRef(screenStream);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const remoteStreamRefs = useRef<Map<string, MediaStream>>(new Map());
+  const remoteScreenStreamRefs = useRef<Map<string, MediaStream>>(new Map());
+  const screenTransceiversRef = useRef<Map<string, RTCRtpTransceiver>>(new Map());
   const connectedPeersRef = useRef<Set<string>>(new Set());
 
   localStreamRef.current = localStream;
+  screenStreamRef.current = screenStream;
 
   const sendOffer = useCallback(
     async (peerId: string, pc: RTCPeerConnection) => {
@@ -81,6 +92,14 @@ export function useProximityVideo({
         if (track) void transceiver.sender.replaceTrack(track);
       }
 
+
+      const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+      const screenTransceiver = pc.addTransceiver("video", {
+        direction: screenTrack ? "sendrecv" : "recvonly",
+      });
+      if (screenTrack) void screenTransceiver.sender.replaceTrack(screenTrack);
+      screenTransceiversRef.current.set(peerId, screenTransceiver);
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           sendSignal(peerId, { kind: "candidate", candidate: event.candidate.toJSON() });
@@ -88,6 +107,22 @@ export function useProximityVideo({
       };
 
       pc.ontrack = (event) => {
+        const isScreenTrack = !!event.transceiver
+          && event.transceiver === screenTransceiversRef.current.get(peerId);
+
+        if (isScreenTrack) {
+          let screenRemote = event.streams[0] ?? remoteScreenStreamRefs.current.get(peerId);
+          if (!screenRemote) {
+            screenRemote = new MediaStream();
+            remoteScreenStreamRefs.current.set(peerId, screenRemote);
+          }
+          if (!screenRemote.getTracks().some((track) => track.id === event.track.id)) {
+            screenRemote.addTrack(event.track);
+          }
+          setRemoteScreenStreams((previous) => ({ ...previous, [peerId]: screenRemote }));
+          return;
+        }
+
         let remoteStream = event.streams[0] ?? remoteStreamRefs.current.get(peerId);
         if (!remoteStream) {
           remoteStream = new MediaStream();
@@ -113,8 +148,15 @@ export function useProximityVideo({
     peersRef.current.get(peerId)?.close();
     peersRef.current.delete(peerId);
     remoteStreamRefs.current.delete(peerId);
+    remoteScreenStreamRefs.current.delete(peerId);
+    screenTransceiversRef.current.delete(peerId);
     connectedPeersRef.current.delete(peerId);
     setRemoteStreams((previous) => {
+      const next = { ...previous };
+      delete next[peerId];
+      return next;
+    });
+    setRemoteScreenStreams((previous) => {
       const next = { ...previous };
       delete next[peerId];
       return next;
@@ -160,9 +202,13 @@ export function useProximityVideo({
   }, [nearbyIds, selfId, createPeer, closePeer]);
 
   useEffect(() => {
+    const screenTrack = screenStreamRef.current?.getVideoTracks()[0] ?? null;
     peersRef.current.forEach((pc, peerId) => {
       let changed = false;
+      const screenTransceiver = screenTransceiversRef.current.get(peerId);
+
       for (const transceiver of pc.getTransceivers()) {
+        if (transceiver === screenTransceiver) continue;
         const kind = transceiver.sender.track?.kind || transceiver.receiver.track?.kind;
         if (!kind) continue;
 
@@ -184,19 +230,52 @@ export function useProximityVideo({
           }
         }
       }
+
+      if (screenTransceiver) {
+        if (screenTrack) {
+          if (screenTransceiver.sender.track?.id !== screenTrack.id) {
+            void screenTransceiver.sender.replaceTrack(screenTrack);
+            screenTransceiver.direction = "sendrecv";
+            changed = true;
+          } else if (screenTransceiver.direction !== "sendrecv") {
+            screenTransceiver.direction = "sendrecv";
+            changed = true;
+          }
+        } else {
+          if (screenTransceiver.sender.track !== null) {
+            void screenTransceiver.sender.replaceTrack(null);
+            screenTransceiver.direction = "recvonly";
+            changed = true;
+          }
+        }
+      }
+
       if (changed) void sendOffer(peerId, pc);
     });
-  }, [localStream, sendOffer]);
+  }, [localStream, screenStream, sendOffer]);
 
   useEffect(() => {
     const peers = peersRef.current;
     const remoteStreamMap = remoteStreamRefs.current;
+    const remoteScreenStreamMap = remoteScreenStreamRefs.current;
     return () => {
       peers.forEach((pc) => pc.close());
       peers.clear();
       remoteStreamMap.clear();
+      remoteScreenStreamMap.clear();
     };
   }, []);
 
-  return { localStream, remoteStreams, micOn, camOn, toggleMic, toggleCam };
+  return {
+    localStream,
+    remoteStreams,
+    remoteScreenStreams,
+    micOn,
+    camOn,
+    screenOn,
+    screenStream,
+    toggleMic,
+    toggleCam,
+    toggleScreen,
+  };
 }

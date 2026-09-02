@@ -1,5 +1,32 @@
 "use client";
 
+/*//User opens URL
+        │
+        ▼
+Load space information
+        │
+        ▼
+Check login
+        │
+        ▼
+Show pre-join screen
+        │
+        ▼
+User enters name
+        │
+        ▼
+Join WebSocket
+        │
+        ▼
+Load Phaser game
+        │
+        ▼
+Show chat
+Show players
+Show video
+Show controls
+*/
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -10,7 +37,8 @@ import { useLocalMedia, type LocalMediaController } from "../../../hooks/use-loc
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
-import { VideoLayer } from "../../../components/game-ui/video-tile";
+import { AgentFeed } from "../../../components/game-ui/agent-feed";
+import { VideoLayer, ScreenLayer } from "../../../components/game-ui/video-tile";
 import { PrejoinScreen } from "../../../components/game-ui/prejoin-screen";
 import { getSpace, getUsersMetadata } from "../../../lib/space-api";
 import { updateProfile } from "../../../lib/auth-api";
@@ -30,6 +58,7 @@ export default function SpacePage() {
   const [spaceName, setSpaceName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  // So let me explain you what this is so suppose in the map or the space in when i used to refresh it used to deligate me to the pre join page (space page) so now we the browser remeber we already entered all that 
   const [hasEntered, setHasEntered] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem(`metaverse:entered:${params.spaceId}`) === "true";
@@ -59,6 +88,7 @@ export default function SpacePage() {
     return <SpaceLoading error={loadError} />;
   }
 
+  
   if (!hasEntered) {
     return (
       <PrejoinScreen
@@ -120,6 +150,7 @@ function LiveSpace({
     sendChat,
     reactions,
     sendReaction,
+    agentActivities,
     sendSignal,
     registerSignalHandler,
   } = useSpaceSocket(spaceId, mapTemplate);
@@ -132,6 +163,8 @@ function LiveSpace({
   moveRef.current = move;
   const reactionsRef = useRef(reactions);
   reactionsRef.current = reactions;
+  const activitiesRef = useRef(agentActivities);
+  activitiesRef.current = agentActivities;
 
   const [names, setNames] = useState<Record<string, string>>({});
   const namesRef = useRef(names);
@@ -148,14 +181,17 @@ function LiveSpace({
   const nearbyRef = useRef(nearbyIds);
   nearbyRef.current = nearbyIds;
 
-  const { localStream, remoteStreams, micOn, camOn, toggleMic, toggleCam } = useProximityVideo({
+  const { localStream, remoteStreams, remoteScreenStreams, micOn, camOn, screenOn, toggleMic, toggleCam, toggleScreen } = useProximityVideo({
     selfId,
     nearbyIds,
     localStream: media.stream,
+    screenStream: media.screenStream,
     micOn: media.micOn,
     camOn: media.camOn,
+    screenOn: media.screenOn,
     toggleMic: media.toggleMic,
     toggleCam: media.toggleCam,
+    toggleScreen: media.toggleScreen,
     sendSignal,
     registerSignalHandler,
   });
@@ -224,10 +260,17 @@ function LiveSpace({
         namesRef={namesRef}
         nearbyRef={nearbyRef}
         reactionsRef={reactionsRef}
+        activitiesRef={activitiesRef}
         selfId={selfId}
       />
       <PresenceBar people={people} />
+      <AgentFeed agentActivities={agentActivities} names={names} selfId={selfId} />
       <VideoLayer localStream={localStream} remoteStreams={remoteStreams} names={names} />
+      <ScreenLayer
+        localScreenStream={media.screenStream}
+        remoteScreenStreams={remoteScreenStreams}
+        names={names}
+      />
       <ChatPanel
         generalMessages={generalMessages}
         roomMessages={roomMessages}
@@ -242,8 +285,10 @@ function LiveSpace({
         onReact={sendReaction}
         micOn={micOn}
         camOn={camOn}
+        screenOn={screenOn}
         onToggleMic={() => void toggleMic()}
         onToggleCam={() => void toggleCam()}
+        onToggleScreen={() => void toggleScreen()}
         onUpdateName={handleUpdateName}
       />
     </div>

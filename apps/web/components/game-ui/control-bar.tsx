@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, MicOff, Video, VideoOff, Smile, LogOut } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorX, Smile, LogOut } from "lucide-react";
 
 
 
@@ -21,8 +21,10 @@ type ControlBarProps = {
 
   micOn?: boolean;
   camOn?: boolean;
+  screenOn?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
+  onToggleScreen?: () => void;
 
   onUpdateName?: (newName: string) => Promise<void>;
 };
@@ -35,12 +37,15 @@ export function ControlBar({
   onReact,
   micOn: micProp,
   camOn: camProp,
+  screenOn: screenProp,
   onToggleMic,
   onToggleCam,
+  onToggleScreen,
   onUpdateName,
 }: ControlBarProps) {
   const [localMic, setLocalMic] = useState(true);
   const [localCam, setLocalCam] = useState(true);
+  const [localScreen, setLocalScreen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(displayName);
@@ -53,8 +58,10 @@ export function ControlBar({
 
   const micOn = micProp ?? localMic;
   const camOn = camProp ?? localCam;
+  const screenOn = screenProp ?? localScreen;
   const toggleMic = onToggleMic ?? (() => setLocalMic((v) => !v));
   const toggleCam = onToggleCam ?? (() => setLocalCam((v) => !v));
+  const toggleScreen = onToggleScreen ?? (() => setLocalScreen((v) => !v));
 
 
   const initial = displayName.trim().charAt(0).toUpperCase() || "?";
@@ -156,6 +163,16 @@ export function ControlBar({
           onClick={toggleCam}
         >
           {camOn ? <Video size={18} /> : <VideoOff size={18} />}
+        </ControlButton>
+
+
+        <ControlButton
+          label={screenOn ? "Stop screen sharing" : "Share your screen"}
+          pressed={screenOn}
+          danger={screenOn}
+          onClick={toggleScreen}
+        >
+          {screenOn ? <MonitorX size={18} /> : <MonitorUp size={18} />}
         </ControlButton>
 
 

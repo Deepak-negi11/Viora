@@ -15,9 +15,13 @@ export function useLocalMedia() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [micStatus, setMicStatus] = useState<MediaDeviceStatus>("idle");
   const [camStatus, setCamStatus] = useState<MediaDeviceStatus>("idle");
+  const [screenStatus, setScreenStatus] = useState<MediaDeviceStatus>("idle");
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const micRequestRef = useRef(false);
   const camRequestRef = useRef(false);
+  const screenRequestRef = useRef(false);
 
   const updateStream = useCallback((next: MediaStream) => {
     streamRef.current = next;
@@ -82,9 +86,47 @@ export function useLocalMedia() {
     }
   }, [updateStream]);
 
+  const stopScreenShare = useCallback(() => {
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    setScreenStatus("off");
+  }, []);
+
+  const toggleScreen = useCallback(async () => {
+    if (screenStreamRef.current) {
+      stopScreenShare();
+      return;
+    }
+    if (screenRequestRef.current) return;
+
+    screenRequestRef.current = true;
+    setScreenStatus("requesting");
+    try {
+      const requested = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const track = requested.getVideoTracks()[0];
+      if (!track) throw new Error("No screen was selected");
+      const next = new MediaStream([track]);
+      screenStreamRef.current = next;
+      setScreenStream(next);
+      setScreenStatus("on");
+
+      track.addEventListener("ended", () => {
+        screenStreamRef.current = null;
+        setScreenStream(null);
+        setScreenStatus("off");
+      });
+    } catch (error) {
+      setScreenStatus(permissionErrorStatus(error));
+    } finally {
+      screenRequestRef.current = false;
+    }
+  }, [stopScreenShare]);
+
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -92,10 +134,14 @@ export function useLocalMedia() {
     stream,
     micStatus,
     camStatus,
+    screenStatus,
+    screenStream,
     micOn: micStatus === "on",
     camOn: camStatus === "on",
+    screenOn: screenStatus === "on",
     toggleMic,
     toggleCam,
+    toggleScreen,
   };
 }
 
