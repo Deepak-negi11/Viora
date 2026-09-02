@@ -1,82 +1,74 @@
-name: Deploy production
+name: Deploy production (Azure)
 
-# Auto-deploy disabled during the Azure migration — this workflow still targets
-# DigitalOcean (DOCR + DOKS). Run manually only; remove or rewrite for Azure.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: viora-production
   cancel-in-progress: false
 
 env:
-  REGISTRY: registry.digitalocean.com/viora-registry
+  REGISTRY: vioraregistry.azurecr.io
+  RESOURCE_GROUP: viora-rg
   CLUSTER_NAME: viora-production
   NAMESPACE: viora
   API_URL: https://api.vioraa.tech
-  WEB_URL: https://vioraa.tech
+  SITE_URL: https://vioraa.tech
 
 jobs:
   verify:
-    name: Verify release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.13"
+      - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: bun run --cwd packages/db generate
+        run: cd packages/db && bunx prisma generate
 
       - name: Check server types
-        run: bun run --cwd apps/server check-types
+        run: cd apps/server && bunx tsc --noEmit
 
       - name: Lint web
-        run: bun run --cwd apps/web lint
+        run: cd apps/web && bunx eslint . --max-warnings 0
 
       - name: Check web types
-        run: bun run --cwd apps/web check-types
-
-      - name: Build web
-        env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ env.API_URL }}
-          NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
-          NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
-        run: bun run --cwd apps/web build
+        run: cd apps/web && bunx next typegen && bunx tsc --noEmit
 
   build:
-    name: Build and push images
-    needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-    environment: production
-
+    needs: verify
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
+      - name: Compute image tag
+        id: tag
+        run: echo "image_tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: azure/login@v2
         with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          password: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
 
-      - name: Log in to DigitalOcean registry
-        run: doctl registry login --expiry-seconds 1800
+      - uses: docker/setup-buildx-action@v3
 
       - name: Build and push server image
         uses: docker/build-push-action@v6
@@ -85,9 +77,11 @@ jobs:
           file: apps/server/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/server:${{ github.sha }}
-          cache-from: type=gha,scope=viora-server
-          cache-to: type=gha,mode=max,scope=viora-server
+          tags: |
+            ${{ env.REGISTRY }}/server:${{ steps.tag.outputs.image_tag }}
+            ${{ env.REGISTRY }}/server:latest
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,scope=server,mode=max
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -96,129 +90,87 @@ jobs:
           file: apps/web/Dockerfile
           platforms: linux/amd64
           push: true
+          tags: |
+            ${{ env.REGISTRY }}/web:${{ steps.tag.outputs.image_tag }}
+            ${{ env.REGISTRY }}/web:latest
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ env.API_URL }}
-            NEXT_PUBLIC_POSTHOG_KEY=${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
-            NEXT_PUBLIC_POSTHOG_HOST=${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
-          tags: ${{ env.REGISTRY }}/web:${{ github.sha }}
-          cache-from: type=gha,scope=viora-web
-          cache-to: type=gha,mode=max,scope=viora-web
+            NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.NEXT_PUBLIC_POSTHOG_KEY || 'phc_CYmWjbbGEYbAcupyTXwFRVeaR7NBsFv4B7WG2ThEwUhe' }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ secrets.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com' }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
 
   deploy:
-    name: Deploy to DOKS
-    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    needs: build
     environment: production
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
+      - uses: azure/login@v2
         with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Connect to Kubernetes
-        run: doctl kubernetes cluster kubeconfig save "${CLUSTER_NAME}" --expiry-seconds 1200
+      - name: Set kubectl context to AKS
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
 
-      - name: Record current images
-        id: current
-        shell: bash
+      - name: Record current images for rollback
         run: |
-          set -euo pipefail
+          kubectl get deployment viora-server -n $NAMESPACE \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="server")].image}' > /tmp/previous-server-image
+          kubectl get deployment viora-web -n $NAMESPACE \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="web")].image}' > /tmp/previous-web-image
 
-          old_server_image="$(
-            kubectl get deployment viora-server \
-              --namespace "${NAMESPACE}" \
-              --output jsonpath='{.spec.template.spec.containers[?(@.name=="server")].image}'
-          )"
+      - name: Apply manifests
+        run: kubectl apply -f k8s/namespace.yaml -f k8s/service-account.yaml -f k8s/server.yaml -f k8s/web.yaml
 
-          old_web_image="$(
-            kubectl get deployment viora-web \
-              --namespace "${NAMESPACE}" \
-              --output jsonpath='{.spec.template.spec.containers[?(@.name=="web")].image}'
-          )"
-
-          echo "old_server_image=${old_server_image}" >> "${GITHUB_OUTPUT}"
-          echo "old_web_image=${old_web_image}" >> "${GITHUB_OUTPUT}"
-
-      - name: Deploy release images
+      - name: Point deployments at the new images
         run: |
-          set -euo pipefail
-
           kubectl set image deployment/viora-server \
-            --namespace "${NAMESPACE}" \
-            server="${REGISTRY}/server:${GITHUB_SHA}" \
-            migrate-database="${REGISTRY}/server:${GITHUB_SHA}"
-
+            server=$REGISTRY/server:${{ needs.build.outputs.image_tag }} \
+            migrate-database=$REGISTRY/server:${{ needs.build.outputs.image_tag }} \
+            -n $NAMESPACE
           kubectl set image deployment/viora-web \
-            --namespace "${NAMESPACE}" \
-            web="${REGISTRY}/web:${GITHUB_SHA}"
+            web=$REGISTRY/web:${{ needs.build.outputs.image_tag }} \
+            -n $NAMESPACE
 
       - name: Wait for server rollout
-        id: server_rollout
-        continue-on-error: true
-        run: kubectl rollout status deployment/viora-server --namespace "${NAMESPACE}" --timeout=10m
+        run: kubectl rollout status deployment/viora-server -n $NAMESPACE --timeout=10m
 
       - name: Wait for web rollout
-        id: web_rollout
-        continue-on-error: true
-        run: kubectl rollout status deployment/viora-web --namespace "${NAMESPACE}" --timeout=10m
+        run: kubectl rollout status deployment/viora-web -n $NAMESPACE --timeout=10m
 
-      - name: Check API health
-        id: api_health
-        if: steps.server_rollout.outcome == 'success' && steps.web_rollout.outcome == 'success'
-        continue-on-error: true
-        shell: bash
+      - name: Verify production
         run: |
-          for attempt in {1..12}; do
-            if curl --fail --silent --show-error "${API_URL}/health"; then
-              exit 0
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 10 "$API_URL/health" | grep -q '"status":"ok"'; then
+              echo "API healthy"
+              SITE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SITE_URL")
+              echo "Site status: $SITE_STATUS"
+              if [ "$SITE_STATUS" = "200" ]; then
+                echo "Production verified"
+                exit 0
+              fi
             fi
+            echo "attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "Production verification failed"
           exit 1
 
-      - name: Check website
-        id: web_health
-        if: steps.server_rollout.outcome == 'success' && steps.web_rollout.outcome == 'success'
-        continue-on-error: true
-        run: curl --fail --silent --show-error --head "${WEB_URL}"
-
-      - name: Roll back failed release
-        if: >-
-          steps.server_rollout.outcome == 'failure' ||
-          steps.web_rollout.outcome == 'failure' ||
-          steps.api_health.outcome == 'failure' ||
-          steps.web_health.outcome == 'failure'
-        shell: bash
+      - name: Rollback on failed verification
+        if: failure()
         run: |
-          set -euo pipefail
-
+          echo "Rolling back to previously deployed images"
           kubectl set image deployment/viora-server \
-            --namespace "${NAMESPACE}" \
-            server="${{ steps.current.outputs.old_server_image }}" \
-            migrate-database="${{ steps.current.outputs.old_server_image }}"
-
+            server="$(cat /tmp/previous-server-image)" \
+            migrate-database="$(cat /tmp/previous-server-image)" \
+            -n $NAMESPACE
           kubectl set image deployment/viora-web \
-            --namespace "${NAMESPACE}" \
-            web="${{ steps.current.outputs.old_web_image }}"
-
-          kubectl rollout status deployment/viora-server \
-            --namespace "${NAMESPACE}" \
-            --timeout=10m
-
-          kubectl rollout status deployment/viora-web \
-            --namespace "${NAMESPACE}" \
-            --timeout=10m
-
-          exit 1
-
-      - name: Show deployed resources
-        if: always()
-        run: |
-          kubectl get deployments,pods,services,ingress \
-            --namespace "${NAMESPACE}" \
-            --output wide
+            web="$(cat /tmp/previous-web-image)" \
+            -n $NAMESPACE
+          kubectl rollout status deployment/viora-server -n $NAMESPACE --timeout=10m
+          kubectl rollout status deployment/viora-web -n $NAMESPACE --timeout=10m
