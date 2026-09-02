@@ -1,9 +1,8 @@
 name: Deploy production
 
+# Auto-deploy disabled during the Azure migration — this workflow still targets
+# DigitalOcean (DOCR + DOKS). Run manually only; remove or rewrite for Azure.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:

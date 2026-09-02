@@ -164,15 +164,13 @@ export async function clearAgentActivity(spaceId: string, userId: string) {
 }
 
 export async function getAgentActivities(spaceId: string): Promise<Record<string, AgentActivity>> {
-  const values = (await redis.send("HGETALL", [activityKey(spaceId)])) as string[] | null;
+  const values = (await redis.send("HGETALL", [activityKey(spaceId)])) as
+    | Record<string, string>
+    | null;
   const activities: Record<string, AgentActivity> = {};
-  if (!values || values.length === 0) return activities;
+  if (!values) return activities;
 
-  for (let i = 0; i + 1 < values.length; i += 2) {
-    const userId = values[i];
-    const raw = values[i + 1];
-    if (!userId || !raw) continue;
-
+  for (const [userId, raw] of Object.entries(values)) {
     try {
       const parsed = JSON.parse(raw) as AgentActivity;
       if (parsed && typeof parsed.text === "string" && typeof parsed.at === "number") {
