@@ -37,6 +37,7 @@ import { useLocalMedia, type LocalMediaController } from "../../../hooks/use-loc
 import { ControlBar } from "../../../components/game-ui/control-bar";
 import { PresenceBar } from "../../../components/game-ui/presence-bar";
 import { ChatPanel } from "../../../components/game-ui/chat-panel";
+import { PixelPet } from "../../../components/game-ui/pixel-pet";
 import { VideoLayer, ScreenLayer } from "../../../components/game-ui/video-tile";
 import { PrejoinScreen } from "../../../components/game-ui/prejoin-screen";
 import { getSpace, getUsersMetadata } from "../../../lib/space-api";
@@ -270,7 +271,6 @@ function LiveSpace({
       <PresenceBar people={people} />
       {selectedPlayerId && (
         <PlayerAgentCard
-          userId={selectedPlayerId}
           activity={agentActivities[selectedPlayerId]}
           name={(selectedPlayerId === selfId ? (names[selfId] ?? "You") : (names[selectedPlayerId] ?? selectedPlayerId.slice(0, 5)))}
           onClose={() => setSelectedPlayerId(null)}
@@ -318,12 +318,10 @@ function SpaceLoading({ error }: { error: string | null }) {
 }
 
 function PlayerAgentCard({
-  userId,
   activity,
   name,
   onClose,
 }: {
-  userId: string;
   activity: { text: string; state: "cooking" | "done"; at: number } | undefined;
   name: string;
   onClose: () => void;
@@ -331,11 +329,11 @@ function PlayerAgentCard({
   const isCooking = activity?.state === "cooking";
 
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur-md">
+    <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[min(23rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur-md">
       <div className="flex items-start gap-3 p-4">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
-          {name.charAt(0).toUpperCase()}
-        </span>
+        <div className="flex w-14 shrink-0 flex-col items-center pt-0.5">
+          <PixelPet running={isCooking} size={46} />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-sm font-semibold text-slate-800">{name}</span>
@@ -355,22 +353,19 @@ function PlayerAgentCard({
               <div className="mt-1 flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
                 <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-orange-600">
-                  Agent working · Claude Code
+                  Agent running · Claude Code
                 </span>
               </div>
               <p className="mt-2 break-words rounded-lg border border-slate-100 bg-slate-50 p-2.5 font-mono text-[11px] leading-relaxed text-emerald-700">
                 {activity.text}
               </p>
+              <p className="mt-2 text-[9px] uppercase tracking-wider text-slate-400">
+                updated {Math.max(0, Math.floor((Date.now() - activity.at) / 1000))}s ago
+              </p>
             </>
           ) : (
             <p className="mt-1 text-[11px] leading-4 text-slate-500">
-              Not running an agent right now.
-            </p>
-          )}
-          {isCooking && activity && (
-            <p className="mt-2 text-[9px] uppercase tracking-wider text-slate-400">
-              id {userId.slice(0, 8)} · updated{" "}
-              {Math.max(0, Math.floor((Date.now() - activity.at) / 1000))}s ago
+              Agent not running — the pet is asleep.
             </p>
           )}
         </div>

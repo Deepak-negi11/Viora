@@ -149,8 +149,13 @@ export class ArenaScene extends Phaser.Scene{
         if (!this.anims.exists("claude-pet-walk")) {
             this.anims.create({
                 key: "claude-pet-walk",
-                frames: [{ key: "claude-pet-0" }, { key: "claude-pet-1" }],
-                frameRate: 5,
+                frames: [
+                    { key: "claude-pet-0" },
+                    { key: "claude-pet-1" },
+                    { key: "claude-pet-2" },
+                    { key: "claude-pet-3" },
+                ],
+                frameRate: 10,
                 repeat: -1,
             });
         }
@@ -1270,16 +1275,18 @@ export class ArenaScene extends Phaser.Scene{
 
 
 
-    // Recreates the Claude Code terminal mascot (orange pixel critter) as two
-    // 14x12 canvas textures — frame B alternates lifted legs for the walk cycle.
+    // Recreates the Claude Code terminal mascot (orange pixel critter) as four
+    // 14x12 canvas textures — alternating leg pairs plus a body dip make the
+    // scamper read as running, not sliding.
     private makeClaudePetTextures() {
         const BODY = 0xe8896b;
         const EYE = 0x141414;
         const W = 14;
         const H = 12;
+        const BOB = [0, 1, 1, 0];
 
         const draw = (g: Phaser.GameObjects.Graphics, step: number) => {
-            const bob = step === 1 ? 1 : 0;
+            const bob = BOB[step] ?? 0;
             g.fillStyle(BODY, 1);
             g.fillRect(3, 1 + bob, 8, 8);
             g.fillRect(0, 3 + bob, 3, 3);
@@ -1291,20 +1298,17 @@ export class ArenaScene extends Phaser.Scene{
 
             g.fillStyle(BODY, 1);
             [4, 6, 8, 10].forEach((lx, i) => {
-                const lifted = step === 1 ? i % 2 === 0 : i % 2 === 1;
+                const lifted = (i % 2 === 0) === (step % 2 === 0);
                 g.fillRect(lx, 9, 1, lifted ? 2 : 3);
             });
         };
 
-        const frameA = this.add.graphics();
-        draw(frameA, 0);
-        frameA.generateTexture("claude-pet-0", W, H);
-        frameA.destroy();
-
-        const frameB = this.add.graphics();
-        draw(frameB, 1);
-        frameB.generateTexture("claude-pet-1", W, H);
-        frameB.destroy();
+        for (let step = 0; step < 4; step++) {
+            const g = this.add.graphics();
+            draw(g, step);
+            g.generateTexture(`claude-pet-${step}`, W, H);
+            g.destroy();
+        }
     }
 
     // The Claude pet hovers above a player's head while their agent reports
@@ -1329,7 +1333,8 @@ export class ArenaScene extends Phaser.Scene{
                 this.agentPets[userId] = pet;
             }
             const pet = this.agentPets[userId];
-            pet.setPosition(sprite.x, sprite.y - 62);
+            const hop = Math.abs(Math.sin(this.time.now / 130 + userId.length)) * 2;
+            pet.setPosition(sprite.x, sprite.y - 62 - hop);
             pet.setDepth(10001);
             pet.setAlpha(sprite.alpha);
         }
